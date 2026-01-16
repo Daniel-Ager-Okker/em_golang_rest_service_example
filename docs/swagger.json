@@ -1,0 +1,346 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "contact": {}
+    },
+    "paths": {
+        "/subscription": {
+            "post": {
+                "description": "Create new subscription",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Create new subscription",
+                "parameters": [
+                    {
+                        "description": "Subscription data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_http-server_handlers.CreateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_http-server_handlers.CreateResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/subscription/{id}": {
+            "get": {
+                "description": "Read subscription",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Read subscription",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_http-server_handlers.ReadResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete subscription",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Delete subscription",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_http-server_handlers.Response"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Update subscription",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Update subscription",
+                "parameters": [
+                    {
+                        "description": "Subscription new data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_http-server_handlers.UpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_http-server_handlers.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/subscriptions": {
+            "get": {
+                "description": "Get all subscriptions",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Get all subscriptions",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_http-server_handlers.ListResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/subscriptions/total-cost": {
+            "get": {
+                "description": "Calculate total cost with specified filters",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Calculate total cost with specified filters",
+                "parameters": [
+                    {
+                        "description": "filters data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_http-server_handlers.TotalCostRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_http-server_handlers.TotalCostResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "internal_http-server_handlers.CreateRequest": {
+            "type": "object",
+            "properties": {
+                "end_date": {
+                    "description": "Start date of subscription (optional)",
+                    "type": "string"
+                },
+                "price": {
+                    "description": "Subscription monthly price (required)",
+                    "type": "integer"
+                },
+                "service_name": {
+                    "description": "Subscription service name (required)",
+                    "type": "string"
+                },
+                "start_date": {
+                    "description": "Start date of subscription (required)",
+                    "type": "string"
+                },
+                "user_id": {
+                    "description": "If of user who purchased the subscription (required)",
+                    "type": "string"
+                }
+            }
+        },
+        "internal_http-server_handlers.CreateResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "description": "Reponse optional error message (optional field)",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "Subscription identifier",
+                    "type": "integer"
+                },
+                "status": {
+                    "description": "Reponse status (required field)",
+                    "type": "string"
+                }
+            }
+        },
+        "internal_http-server_handlers.ListItem": {
+            "type": "object",
+            "properties": {
+                "end_date": {
+                    "description": "Start date of subscription",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "Subscription id",
+                    "type": "integer"
+                },
+                "price": {
+                    "description": "Subscription monthly price",
+                    "type": "integer"
+                },
+                "service_name": {
+                    "description": "Subscription service name",
+                    "type": "string"
+                },
+                "start_date": {
+                    "description": "Start date of subscription",
+                    "type": "string"
+                },
+                "user_id": {
+                    "description": "If of user who purchased the subscription",
+                    "type": "string"
+                }
+            }
+        },
+        "internal_http-server_handlers.ListResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "description": "Reponse optional error message (optional field)",
+                    "type": "string"
+                },
+                "items": {
+                    "description": "Data about all subscriptions got",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_http-server_handlers.ListItem"
+                    }
+                },
+                "status": {
+                    "description": "Reponse status (required field)",
+                    "type": "string"
+                }
+            }
+        },
+        "internal_http-server_handlers.ReadResponse": {
+            "type": "object",
+            "properties": {
+                "end_date": {
+                    "description": "Start date of subscription",
+                    "type": "string"
+                },
+                "error": {
+                    "description": "Reponse optional error message (optional field)",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "Subscription id",
+                    "type": "integer"
+                },
+                "price": {
+                    "description": "Subscription monthly price",
+                    "type": "integer"
+                },
+                "service_name": {
+                    "description": "Subscription service name",
+                    "type": "string"
+                },
+                "start_date": {
+                    "description": "Start date of subscription",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "Reponse status (required field)",
+                    "type": "string"
+                },
+                "user_id": {
+                    "description": "If of user who purchased the subscription",
+                    "type": "string"
+                }
+            }
+        },
+        "internal_http-server_handlers.Response": {
+            "description": "Common response",
+            "type": "object",
+            "properties": {
+                "error": {
+                    "description": "Reponse optional error message (optional field)",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "Reponse status (required field)",
+                    "type": "string"
+                }
+            }
+        },
+        "internal_http-server_handlers.TotalCostRequest": {
+            "type": "object",
+            "properties": {
+                "end_date": {
+                    "description": "Start date of subscription (required)",
+                    "type": "string"
+                },
+                "service_name": {
+                    "description": "Subscription service name (optional)",
+                    "type": "string"
+                },
+                "start_date": {
+                    "description": "Start date of subscription (required)",
+                    "type": "string"
+                },
+                "user_id": {
+                    "description": "If of user who purchased the subscription (optional)",
+                    "type": "string"
+                }
+            }
+        },
+        "internal_http-server_handlers.TotalCostResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "description": "Reponse optional error message (optional field)",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "Reponse status (required field)",
+                    "type": "string"
+                },
+                "total_cost": {
+                    "description": "Calculated total cost",
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_http-server_handlers.UpdateRequest": {
+            "type": "object",
+            "properties": {
+                "end_date": {
+                    "description": "New end date (optional)",
+                    "type": "string"
+                },
+                "price": {
+                    "description": "New price (required)",
+                    "type": "integer"
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,12 @@
+env: "prod"
+storage:
+  pg_host: db
+  pg_port: 5432
+  pg_db_name: subscription_db
+  pg_max_pool_size: 1
+  pg_connection_attempts: 3
+  pg_connection_timeout: 30s
+http_server:
+  address: "0.0.0.0:8082"
+  timeout: 5s
+  idle_timeout: 30s

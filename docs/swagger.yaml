@@ -1,0 +1,236 @@
+definitions:
+  internal_http-server_handlers.CreateRequest:
+    properties:
+      end_date:
+        description: Start date of subscription (optional)
+        type: string
+      price:
+        description: Subscription monthly price (required)
+        type: integer
+      service_name:
+        description: Subscription service name (required)
+        type: string
+      start_date:
+        description: Start date of subscription (required)
+        type: string
+      user_id:
+        description: If of user who purchased the subscription (required)
+        type: string
+    type: object
+  internal_http-server_handlers.CreateResponse:
+    properties:
+      error:
+        description: Reponse optional error message (optional field)
+        type: string
+      id:
+        description: Subscription identifier
+        type: integer
+      status:
+        description: Reponse status (required field)
+        type: string
+    type: object
+  internal_http-server_handlers.ListItem:
+    properties:
+      end_date:
+        description: Start date of subscription
+        type: string
+      id:
+        description: Subscription id
+        type: integer
+      price:
+        description: Subscription monthly price
+        type: integer
+      service_name:
+        description: Subscription service name
+        type: string
+      start_date:
+        description: Start date of subscription
+        type: string
+      user_id:
+        description: If of user who purchased the subscription
+        type: string
+    type: object
+  internal_http-server_handlers.ListResponse:
+    properties:
+      error:
+        description: Reponse optional error message (optional field)
+        type: string
+      items:
+        description: Data about all subscriptions got
+        items:
+          $ref: '#/definitions/internal_http-server_handlers.ListItem'
+        type: array
+      status:
+        description: Reponse status (required field)
+        type: string
+    type: object
+  internal_http-server_handlers.ReadResponse:
+    properties:
+      end_date:
+        description: Start date of subscription
+        type: string
+      error:
+        description: Reponse optional error message (optional field)
+        type: string
+      id:
+        description: Subscription id
+        type: integer
+      price:
+        description: Subscription monthly price
+        type: integer
+      service_name:
+        description: Subscription service name
+        type: string
+      start_date:
+        description: Start date of subscription
+        type: string
+      status:
+        description: Reponse status (required field)
+        type: string
+      user_id:
+        description: If of user who purchased the subscription
+        type: string
+    type: object
+  internal_http-server_handlers.Response:
+    description: Common response
+    properties:
+      error:
+        description: Reponse optional error message (optional field)
+        type: string
+      status:
+        description: Reponse status (required field)
+        type: string
+    type: object
+  internal_http-server_handlers.TotalCostRequest:
+    properties:
+      end_date:
+        description: Start date of subscription (required)
+        type: string
+      service_name:
+        description: Subscription service name (optional)
+        type: string
+      start_date:
+        description: Start date of subscription (required)
+        type: string
+      user_id:
+        description: If of user who purchased the subscription (optional)
+        type: string
+    type: object
+  internal_http-server_handlers.TotalCostResponse:
+    properties:
+      error:
+        description: Reponse optional error message (optional field)
+        type: string
+      status:
+        description: Reponse status (required field)
+        type: string
+      total_cost:
+        description: Calculated total cost
+        type: integer
+    type: object
+  internal_http-server_handlers.UpdateRequest:
+    properties:
+      end_date:
+        description: New end date (optional)
+        type: string
+      price:
+        description: New price (required)
+        type: integer
+    type: object
+info:
+  contact: {}
+paths:
+  /subscription:
+    post:
+      consumes:
+      - application/json
+      description: Create new subscription
+      parameters:
+      - description: Subscription data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_http-server_handlers.CreateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_http-server_handlers.CreateResponse'
+      summary: Create new subscription
+  /subscription/{id}:
+    delete:
+      description: Delete subscription
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_http-server_handlers.Response'
+      summary: Delete subscription
+    get:
+      description: Read subscription
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_http-server_handlers.ReadResponse'
+      summary: Read subscription
+    patch:
+      consumes:
+      - application/json
+      description: Update subscription
+      parameters:
+      - description: Subscription new data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_http-server_handlers.UpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_http-server_handlers.Response'
+      summary: Update subscription
+  /subscriptions:
+    get:
+      consumes:
+      - application/json
+      description: Get all subscriptions
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_http-server_handlers.ListResponse'
+      summary: Get all subscriptions
+  /subscriptions/total-cost:
+    get:
+      consumes:
+      - application/json
+      description: Calculate total cost with specified filters
+      parameters:
+      - description: filters data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_http-server_handlers.TotalCostRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_http-server_handlers.TotalCostResponse'
+      summary: Calculate total cost with specified filters
+swagger: "2.0"

@@ -1,0 +1,75 @@
+services:
+  db:
+    image: postgres:14.19-alpine
+    container_name: rest_service_db
+    environment:
+      POSTGRES_USER: ${PG_USER}
+      POSTGRES_PASSWORD: ${PG_PASS}
+      POSTGRES_DB: subscription_db
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - ./db:/var/lib/postgresql/data/pgdata
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${PG_USER} -d subscription_db" ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    image: migrate/migrate:v4.17.1
+    container_name: rest_service_migrate
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./internal/storage/postgres/migrations:/migrations:ro
+    command: [ "-path", "/migrations", "-database", "postgres://${PG_USER}:${PG_PASS}@db:5432/subscription_db?sslmode=disable", "up" ]
+    restart: "no"
+
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "8083:80"
+    depends_on:
+      - migrate
+
+  dozzle:
+    image: amir20/dozzle
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "8084:8080"
+    environment:
+      DOZZLE_NO_ANALYTICS: true
+      DOZZLE_FILTER: "name=rest_service_prod"
+
+  app:
+    build:
+      context: .
+      dockerfile: docker/prod.dockerfile
+    container_name: rest_service_prod
+    ports:
+      - "8081:8081"
+    environment:
+      CONFIG_PATH: ./config/prod.yaml
+      PG_USER: ${PG_USER}
+      PG_PASS: ${PG_PASS}
+    env_file: [ .env ]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  app-local:
+    build:
+      context: .
+      dockerfile: docker/dev.dockerfile
+    container_name: rest_service_local
+    ports:
+      - "8082:8082"
+    environment:
+      CONFIG_PATH: ./config/dev.yaml
+    volumes:
+      - ./db:/rest_service_example/db
