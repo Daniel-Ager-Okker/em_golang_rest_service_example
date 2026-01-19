@@ -21,14 +21,17 @@ func TestListHandler(t *testing.T) {
 
 	cases := []struct {
 		name      string
+		respCode  int
 		respError string
 		mockError error
 	}{
 		{
-			name: "Success",
+			name:     "Success",
+			respCode: http.StatusOK,
 		},
 		{
 			name:      "Any other reader error case",
+			respCode:  http.StatusInternalServerError,
 			respError: "failed to get subscription",
 			mockError: errors.New("any error"),
 		},
@@ -39,13 +42,13 @@ func TestListHandler(t *testing.T) {
 			listMock := mocks.NewListReader(t)
 			listMock.On("GetSubscriptions").Return([]model.Subscription{}, tc.mockError)
 
-			listRespCheck(t, logger, listMock, &tc.respError)
+			listRespCheck(t, logger, listMock, tc.respCode, &tc.respError)
 		})
 	}
 }
 
 // Helper for check
-func listRespCheck(t *testing.T, l *slog.Logger, r ListReader, expRespErr *string) {
+func listRespCheck(t *testing.T, l *slog.Logger, r ListReader, expCode int, expRespErr *string) {
 	t.Helper()
 
 	router := chi.NewRouter()
@@ -61,7 +64,7 @@ func listRespCheck(t *testing.T, l *slog.Logger, r ListReader, expRespErr *strin
 	rr := httptest.NewRecorder()
 	router.ServeHTTP(rr, req)
 
-	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, expCode, rr.Code)
 
 	body := rr.Body.String()
 

@@ -24,27 +24,32 @@ func TestReadHandler(t *testing.T) {
 	cases := []struct {
 		name      string
 		id        string
+		respCode  int
 		respError string
 		mockError error
 	}{
 		{
-			name: "Success",
-			id:   "1",
+			name:     "Success",
+			id:       "1",
+			respCode: http.StatusOK,
 		},
 		{
 			name:      "Invalid id",
 			id:        "trash",
+			respCode:  http.StatusBadRequest,
 			respError: "invalid subscription id format",
 		},
 		{
 			name:      "Not found subscription",
 			id:        "532",
+			respCode:  http.StatusNotFound,
 			respError: "subscription not found",
 			mockError: storage.ErrSubscribtionNotFound,
 		},
 		{
 			name:      "Any other reader error case",
 			id:        "1",
+			respCode:  http.StatusInternalServerError,
 			respError: "failed to get subscription",
 			mockError: errors.New("any error"),
 		},
@@ -59,13 +64,13 @@ func TestReadHandler(t *testing.T) {
 				readerMock.On("GetSubscription", int64(id)).Return(model.Subscription{}, tc.mockError)
 			}
 
-			readRespCheck(t, logger, readerMock, tc.id, &tc.respError)
+			readRespCheck(t, logger, readerMock, tc.id, tc.respCode, &tc.respError)
 		})
 	}
 }
 
 // Helper for check
-func readRespCheck(t *testing.T, l *slog.Logger, r Reader, id string, expRespErr *string) {
+func readRespCheck(t *testing.T, l *slog.Logger, r Reader, id string, expCode int, expRespErr *string) {
 	t.Helper()
 
 	router := chi.NewRouter()
@@ -81,7 +86,7 @@ func readRespCheck(t *testing.T, l *slog.Logger, r Reader, id string, expRespErr
 	rr := httptest.NewRecorder()
 	router.ServeHTTP(rr, req)
 
-	assert.Equal(t, rr.Code, http.StatusOK)
+	assert.Equal(t, expCode, rr.Code)
 
 	body := rr.Body.String()
 

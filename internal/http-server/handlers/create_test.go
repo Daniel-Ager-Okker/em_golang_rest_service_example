@@ -25,6 +25,7 @@ type readTCase struct {
 	userId      string
 	startDate   string
 	endDate     string
+	respCode    int
 	respError   string
 	mockError   error
 }
@@ -41,30 +42,35 @@ func TestCreateHandler(t *testing.T) {
 			userId:      uuid.NewString(),
 			startDate:   "01-2026",
 			endDate:     "02-2026",
+			respCode:    http.StatusCreated,
 			respError:   "",
 			mockError:   nil,
 		},
 		{
 			name:        "Validation error on emty service name",
 			serviceName: "",
+			respCode:    http.StatusBadRequest,
 			respError:   "empty service name",
 		},
 		{
 			name:        "Validation error on invalid price",
 			serviceName: "Netflix",
 			price:       -500,
+			respCode:    http.StatusBadRequest,
 			respError:   "request price is invalid",
 		},
 		{
 			name:        "Validation error on emty user id",
 			serviceName: "Any",
 			userId:      "",
+			respCode:    http.StatusBadRequest,
 			respError:   "empty user id",
 		},
 		{
 			name:        "Validation error on invalid user id",
 			serviceName: "Any",
 			userId:      "Trash",
+			respCode:    http.StatusBadRequest,
 			respError:   "request user id is invalid",
 		},
 		{
@@ -72,6 +78,7 @@ func TestCreateHandler(t *testing.T) {
 			serviceName: "Any",
 			userId:      uuid.NewString(),
 			startDate:   "",
+			respCode:    http.StatusBadRequest,
 			respError:   "empty start date",
 		},
 		{
@@ -79,6 +86,7 @@ func TestCreateHandler(t *testing.T) {
 			serviceName: "Any",
 			userId:      uuid.NewString(),
 			startDate:   "any invalid value",
+			respCode:    http.StatusBadRequest,
 			respError:   "request start date is invalid",
 		},
 		{
@@ -87,6 +95,7 @@ func TestCreateHandler(t *testing.T) {
 			userId:      uuid.NewString(),
 			startDate:   "01-2026",
 			endDate:     "trash",
+			respCode:    http.StatusBadRequest,
 			respError:   "request end date is invalid",
 		},
 		{
@@ -95,6 +104,7 @@ func TestCreateHandler(t *testing.T) {
 			userId:      uuid.NewString(),
 			startDate:   "01-2026",
 			endDate:     "12-2025",
+			respCode:    http.StatusBadRequest,
 			respError:   "request start date greater than end date",
 		},
 	}
@@ -109,7 +119,7 @@ func TestCreateHandler(t *testing.T) {
 			}
 
 			reqBody := readTCaseToStr(&tc)
-			createRespCheck(t, logger, creatorMock, &reqBody, &tc.respError)
+			createRespCheck(t, logger, creatorMock, &reqBody, tc.respCode, &tc.respError)
 		})
 	}
 
@@ -118,7 +128,7 @@ func TestCreateHandler(t *testing.T) {
 		reqInput := ""
 		crMock := mocks.NewCreator(t)
 		expectedErr := "empty request"
-		createRespCheck(t, logger, crMock, &reqInput, &expectedErr)
+		createRespCheck(t, logger, crMock, &reqInput, http.StatusBadRequest, &expectedErr)
 	})
 
 	// 3.Case when cannot decode request body (price is string, but no integer)
@@ -132,7 +142,7 @@ func TestCreateHandler(t *testing.T) {
 
 		expectedErr := "failed to decode request"
 
-		createRespCheck(t, logger, crMock, &invalidInput, &expectedErr)
+		createRespCheck(t, logger, crMock, &invalidInput, http.StatusBadRequest, &expectedErr)
 	})
 
 	// 4.Case when got error from mock
@@ -148,12 +158,12 @@ func TestCreateHandler(t *testing.T) {
 
 		expectedErr := "subscription already exists"
 
-		createRespCheck(t, logger, crMock, &testInput, &expectedErr)
+		createRespCheck(t, logger, crMock, &testInput, http.StatusConflict, &expectedErr)
 	})
 }
 
 // Helper for check
-func createRespCheck(t *testing.T, l *slog.Logger, c Creator, input *string, expectedRespErr *string) {
+func createRespCheck(t *testing.T, l *slog.Logger, c Creator, input *string, expectedCode int, expectedRespErr *string) {
 	t.Helper()
 
 	handler := NewCreateHandler(l, c)
@@ -164,7 +174,7 @@ func createRespCheck(t *testing.T, l *slog.Logger, c Creator, input *string, exp
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 
-	assert.Equal(t, rr.Code, http.StatusOK)
+	assert.Equal(t, expectedCode, rr.Code)
 
 	body := rr.Body.String()
 

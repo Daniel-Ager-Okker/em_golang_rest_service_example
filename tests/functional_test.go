@@ -38,14 +38,14 @@ func TestCreate(t *testing.T) {
 	e.POST("/subscription").
 		WithJSON(req).
 		Expect().
-		Status(http.StatusOK).
+		Status(http.StatusCreated).
 		JSON().Object().Value("id").IsNumber()
 
 	// 2.Try to create it once more time
 	e.POST("/subscription").
 		WithJSON(req).
 		Expect().
-		Status(http.StatusOK).
+		Status(http.StatusConflict).
 		JSON().Object().Value("error").IsEqual("subscription already exists")
 }
 
@@ -64,7 +64,7 @@ func TestRead(t *testing.T) {
 	id := e.POST("/subscription").
 		WithJSON(req).
 		Expect().
-		Status(http.StatusOK).
+		Status(http.StatusCreated).
 		JSON().Object().Value("id").Number().Raw()
 
 	// 2.Try to get it
@@ -90,7 +90,7 @@ func TestRead(t *testing.T) {
 
 	e.GET("/subscription/-532").
 		Expect().
-		Status(http.StatusOK).
+		Status(http.StatusNotFound).
 		JSON().Object().IsEqual(expectedResp)
 }
 
@@ -109,7 +109,7 @@ func TestUpdate(t *testing.T) {
 	id := e.POST("/subscription").
 		WithJSON(req).
 		Expect().
-		Status(http.StatusOK).
+		Status(http.StatusCreated).
 		JSON().Object().Value("id").Number().Raw()
 
 	// 2.Update it
@@ -144,7 +144,7 @@ func TestUpdate(t *testing.T) {
 	e.PATCH("/subscription/-532").
 		WithJSON(updateReq).
 		Expect().
-		Status(http.StatusOK).
+		Status(http.StatusNotFound).
 		JSON().Object().IsEqual(handlers.RespError("subscription not found"))
 }
 
@@ -162,7 +162,7 @@ func TestDelete(t *testing.T) {
 	id := e.POST("/subscription").
 		WithJSON(req).
 		Expect().
-		Status(http.StatusOK).
+		Status(http.StatusCreated).
 		JSON().Object().Value("id").Number().Raw()
 
 	// 2.Try to delete it once more time
@@ -174,7 +174,7 @@ func TestDelete(t *testing.T) {
 	// 3.Try to delete non-existen data
 	e.DELETE("/subscription/-532").
 		Expect().
-		Status(http.StatusOK).
+		Status(http.StatusNotFound).
 		JSON().Object().IsEqual(handlers.RespError("subscription not found"))
 }
 
@@ -198,7 +198,7 @@ func TestList(t *testing.T) {
 		id := e.POST("/subscription").
 			WithJSON(req).
 			Expect().
-			Status(http.StatusOK).
+			Status(http.StatusCreated).
 			JSON().Object().Value("id").Number().Raw()
 
 		createdIDs = append(createdIDs, int64(id))
@@ -238,7 +238,7 @@ func TestTotalCost(t *testing.T) {
 		id := e.POST("/subscription").
 			WithJSON(req).
 			Expect().
-			Status(http.StatusOK).
+			Status(http.StatusCreated).
 			JSON().Object().Value("id").Number().Raw()
 
 		createdIDs = append(createdIDs, int64(id))

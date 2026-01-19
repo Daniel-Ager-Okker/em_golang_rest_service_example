@@ -24,6 +24,7 @@ type updateTCase struct {
 	id         string
 	newPrice   int
 	newEndDate string
+	respCode   int
 	respError  string
 	mockError  error
 }
@@ -38,16 +39,19 @@ func TestUpdateHandler(t *testing.T) {
 			id:         "1",
 			newPrice:   350,
 			newEndDate: "04-2026",
+			respCode:   http.StatusOK,
 		},
 		{
 			name:      "Invalid id",
 			id:        "trash",
+			respCode:  http.StatusBadRequest,
 			respError: "invalid subscription id format",
 		},
 		{
 			name:      "Validation error on price",
 			id:        "2",
 			newPrice:  -5,
+			respCode:  http.StatusBadRequest,
 			respError: "request price is invalid",
 		},
 		{
@@ -55,6 +59,7 @@ func TestUpdateHandler(t *testing.T) {
 			id:         "2",
 			newPrice:   155,
 			newEndDate: "trash-garbage",
+			respCode:   http.StatusBadRequest,
 			respError:  "request end date is invalid",
 		},
 		{
@@ -62,6 +67,7 @@ func TestUpdateHandler(t *testing.T) {
 			id:         "3",
 			newPrice:   155,
 			newEndDate: "05-2025",
+			respCode:   http.StatusNotFound,
 			respError:  "subscription not found",
 			mockError:  storage.ErrSubscribtionNotFound,
 		},
@@ -70,6 +76,7 @@ func TestUpdateHandler(t *testing.T) {
 			id:         "3",
 			newPrice:   155,
 			newEndDate: "05-2025",
+			respCode:   http.StatusInternalServerError,
 			respError:  "failed to get subscription",
 			mockError:  errors.New("some error"),
 		},
@@ -91,23 +98,26 @@ func TestUpdateHandler(t *testing.T) {
 
 			reqBody := updateTCaseToStr(&tc)
 
-			updateRespCheck(t, logger, updaterMock, &tc, &reqBody, &tc.respError)
+			updateRespCheck(t, logger, updaterMock, &tc, &reqBody, tc.respCode, &tc.respError)
 		})
 	}
 
 	// 2.Request parsing cases
 	reqCases := []struct {
 		name      string
+		respCode  int
 		respError string
 		input     string
 	}{
 		{
 			name:      "Empty request",
+			respCode:  http.StatusBadRequest,
 			respError: "empty request",
 			input:     "",
 		},
 		{
 			name:      "Invalid request body",
+			respCode:  http.StatusBadRequest,
 			respError: "failed to decode request",
 			input: fmt.Sprintf(
 				`{"price": "%d", "end_date": "%s"}`,
@@ -120,15 +130,15 @@ func TestUpdateHandler(t *testing.T) {
 		t.Run(reqTc.name, func(t *testing.T) {
 			updaterMock := mocks.NewUpdater(t)
 
-			tc := updateTCase{id: "1", respError: reqTc.respError}
+			tc := updateTCase{id: "1", respCode: reqTc.respCode, respError: reqTc.respError}
 
-			updateRespCheck(t, logger, updaterMock, &tc, &reqTc.input, &tc.respError)
+			updateRespCheck(t, logger, updaterMock, &tc, &reqTc.input, tc.respCode, &tc.respError)
 		})
 	}
 }
 
 // Helper for check
-func updateRespCheck(t *testing.T, l *slog.Logger, u Updater, tc *updateTCase, in *string, expectedRespErr *string) {
+func updateRespCheck(t *testing.T, l *slog.Logger, u Updater, tc *updateTCase, in *string, expRespCode int, expectedRespErr *string) {
 	t.Helper()
 
 	router := chi.NewRouter()
@@ -144,7 +154,7 @@ func updateRespCheck(t *testing.T, l *slog.Logger, u Updater, tc *updateTCase, i
 	rr := httptest.NewRecorder()
 	router.ServeHTTP(rr, req)
 
-	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, expRespCode, rr.Code)
 
 	body := rr.Body.String()
 

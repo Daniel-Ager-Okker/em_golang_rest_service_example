@@ -53,7 +53,7 @@ type Creator interface {
 // @Accept json
 // @Produce json
 // @Param request body CreateRequest true "Subscription data"
-// @Success 200 {object} CreateResponse
+// @Success 201 {object} CreateResponse
 // @Router /subscription [post]
 func NewCreateHandler(logger *slog.Logger, creator Creator) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -63,6 +63,8 @@ func NewCreateHandler(logger *slog.Logger, creator Creator) http.HandlerFunc {
 			slog.String("op", op),
 			slog.String("request_id", middleware.GetReqID(r.Context())),
 		)
+
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 		// 1.Parse request
 		var req CreateRequest
@@ -84,6 +86,7 @@ func NewCreateHandler(logger *slog.Logger, creator Creator) http.HandlerFunc {
 		if errors.Is(err, storage.ErrSubscriptionExists) {
 			logger.Info("subscription already exists", "service_name", req.ServiceName, "user_id", req.UserID)
 
+			w.WriteHeader(http.StatusConflict)
 			render.JSON(w, r, CreateResponse{Response: RespError("subscription already exists")})
 
 			return
@@ -91,6 +94,7 @@ func NewCreateHandler(logger *slog.Logger, creator Creator) http.HandlerFunc {
 		if err != nil {
 			logger.Error("failed to create subscription", "details", err)
 
+			w.WriteHeader(http.StatusInternalServerError)
 			render.JSON(w, r, CreateResponse{Response: RespError("failed to create subscription")})
 
 			return
@@ -98,6 +102,7 @@ func NewCreateHandler(logger *slog.Logger, creator Creator) http.HandlerFunc {
 
 		logger.Info("subscription created", "id", id)
 
+		w.WriteHeader(http.StatusCreated)
 		render.JSON(w, r, CreateResponse{ID: id, Response: RespOK()})
 	}
 }
@@ -106,6 +111,7 @@ func validateCreateReq(r *http.Request, w http.ResponseWriter, req *CreateReques
 	// 1.Service name
 	if req.ServiceName == "" {
 		logger.Error("request serivce name is empty")
+		w.WriteHeader(http.StatusBadRequest)
 		render.JSON(w, r, CreateResponse{Response: RespError("empty service name")})
 		return false
 	}
@@ -113,6 +119,7 @@ func validateCreateReq(r *http.Request, w http.ResponseWriter, req *CreateReques
 	// 2.Price
 	if req.Price < 0 {
 		logger.Error("request price cannot be lowe than 0")
+		w.WriteHeader(http.StatusBadRequest)
 		render.JSON(w, r, CreateResponse{Response: RespError("request price is invalid")})
 		return false
 	}
@@ -120,12 +127,14 @@ func validateCreateReq(r *http.Request, w http.ResponseWriter, req *CreateReques
 	// 3.User ID
 	if req.UserID == "" {
 		logger.Error("request user id is empty")
+		w.WriteHeader(http.StatusBadRequest)
 		render.JSON(w, r, CreateResponse{Response: RespError("empty user id")})
 		return false
 	}
 	_, err := uuid.Parse(req.UserID)
 	if err != nil {
 		logger.Error("request user id is invalid", "details", err)
+		w.WriteHeader(http.StatusBadRequest)
 		render.JSON(w, r, CreateResponse{Response: RespError("request user id is invalid")})
 		return false
 	}
@@ -133,6 +142,7 @@ func validateCreateReq(r *http.Request, w http.ResponseWriter, req *CreateReques
 	// 4.Dates
 	if req.StartDate == "" {
 		logger.Error("request start date is empty")
+		w.WriteHeader(http.StatusBadRequest)
 		render.JSON(w, r, CreateResponse{Response: RespError("empty start date")})
 		return false
 	}
@@ -140,6 +150,7 @@ func validateCreateReq(r *http.Request, w http.ResponseWriter, req *CreateReques
 	startDate, err := model.DateFromString(req.StartDate)
 	if err != nil {
 		logger.Error("request start date is invalid", "details", err)
+		w.WriteHeader(http.StatusBadRequest)
 		render.JSON(w, r, CreateResponse{Response: RespError("request start date is invalid")})
 		return false
 	}
@@ -148,12 +159,14 @@ func validateCreateReq(r *http.Request, w http.ResponseWriter, req *CreateReques
 		endDate, err := model.DateFromString(req.EndDate)
 		if err != nil {
 			logger.Error("request end date is invalid", "details", err)
+			w.WriteHeader(http.StatusBadRequest)
 			render.JSON(w, r, CreateResponse{Response: RespError("request end date is invalid")})
 			return false
 		}
 
 		if startDate.GreaterThan(endDate) {
 			logger.Error("request start date greater than end date")
+			w.WriteHeader(http.StatusBadRequest)
 			render.JSON(w, r, CreateResponse{Response: RespError("request start date greater than end date")})
 			return false
 		}

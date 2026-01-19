@@ -58,11 +58,14 @@ func NewReadHandler(logger *slog.Logger, reader Reader) http.HandlerFunc {
 			slog.String("request_id", middleware.GetReqID(r.Context())),
 		)
 
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
 		// 1.Get subscription id from request
 		idStr := chi.URLParam(r, "id")
 		if idStr == "" {
 			logger.Info("no subscription id in request")
 
+			w.WriteHeader(http.StatusBadRequest)
 			render.JSON(w, r, ReadResponse{Response: RespError("no subscription id in request")})
 
 			return
@@ -71,6 +74,7 @@ func NewReadHandler(logger *slog.Logger, reader Reader) http.HandlerFunc {
 		if err != nil {
 			logger.Info("invalid subscription id format", "details", err)
 
+			w.WriteHeader(http.StatusBadRequest)
 			render.JSON(w, r, ReadResponse{Response: RespError("invalid subscription id format")})
 
 			return
@@ -81,6 +85,7 @@ func NewReadHandler(logger *slog.Logger, reader Reader) http.HandlerFunc {
 		if errors.Is(err, storage.ErrSubscribtionNotFound) {
 			logger.Info("subscription not found", "id", id)
 
+			w.WriteHeader(http.StatusNotFound)
 			render.JSON(w, r, ReadResponse{Response: RespError("subscription not found")})
 
 			return
@@ -88,6 +93,7 @@ func NewReadHandler(logger *slog.Logger, reader Reader) http.HandlerFunc {
 		if err != nil {
 			logger.Error("failed to get subscription", "details", err)
 
+			w.WriteHeader(http.StatusInternalServerError)
 			render.JSON(w, r, ReadResponse{Response: RespError("failed to get subscription")})
 
 			return

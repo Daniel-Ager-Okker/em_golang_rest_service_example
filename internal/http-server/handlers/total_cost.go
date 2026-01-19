@@ -55,6 +55,8 @@ func NewTotalCostHandler(logger *slog.Logger, listReader ListReader) http.Handle
 			slog.String("request_id", middleware.GetReqID(r.Context())),
 		)
 
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
 		// 1.Parse request
 		var req TotalCostRequest
 		if ok := parseReq(r, w, logger, &req); !ok {
@@ -72,6 +74,7 @@ func NewTotalCostHandler(logger *slog.Logger, listReader ListReader) http.Handle
 		if err != nil {
 			logger.Error("failed to get subscription", "details", err)
 
+			w.WriteHeader(http.StatusInternalServerError)
 			render.JSON(w, r, TotalCostResponse{Response: RespError("failed to get subscription")})
 
 			return
@@ -95,6 +98,7 @@ func validateTotalCostReq(r *http.Request, w http.ResponseWriter, req *TotalCost
 	// 1.Dates
 	if req.StartDate == "" {
 		logger.Error("request start date is empty")
+		w.WriteHeader(http.StatusBadRequest)
 		render.JSON(w, r, TotalCostResponse{Response: RespError("empty start date")})
 		return false
 	}
@@ -102,12 +106,14 @@ func validateTotalCostReq(r *http.Request, w http.ResponseWriter, req *TotalCost
 	startDate, err := model.DateFromString(req.StartDate)
 	if err != nil {
 		logger.Error("request start date is invalid", "details", err)
+		w.WriteHeader(http.StatusBadRequest)
 		render.JSON(w, r, TotalCostResponse{Response: RespError("request start date is invalid")})
 		return false
 	}
 
 	if req.EndDate == "" {
 		logger.Error("request end date is empty")
+		w.WriteHeader(http.StatusBadRequest)
 		render.JSON(w, r, TotalCostResponse{Response: RespError("empty end date")})
 		return false
 	}
@@ -115,12 +121,14 @@ func validateTotalCostReq(r *http.Request, w http.ResponseWriter, req *TotalCost
 	endDate, err := model.DateFromString(req.EndDate)
 	if err != nil {
 		logger.Error("request end date is invalid", "details", err)
+		w.WriteHeader(http.StatusBadRequest)
 		render.JSON(w, r, TotalCostResponse{Response: RespError("request end date is invalid")})
 		return false
 	}
 
 	if startDate.GreaterThan(endDate) {
 		logger.Error("request start date greater than end date")
+		w.WriteHeader(http.StatusBadRequest)
 		render.JSON(w, r, TotalCostResponse{Response: RespError("request start date greater than end date")})
 		return false
 	}
@@ -131,6 +139,7 @@ func validateTotalCostReq(r *http.Request, w http.ResponseWriter, req *TotalCost
 		if err != nil {
 			logger.Error("user id filter is invalid", "details", err)
 
+			w.WriteHeader(http.StatusBadRequest)
 			render.JSON(w, r, TotalCostResponse{Response: RespError("user id filter is invalid")})
 
 			return false

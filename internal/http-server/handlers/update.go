@@ -46,11 +46,14 @@ func NewUpdateHandler(logger *slog.Logger, updater Updater) http.HandlerFunc {
 			slog.String("request_id", middleware.GetReqID(r.Context())),
 		)
 
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
 		// 1.Get subscription id from request
 		idStr := chi.URLParam(r, "id")
 		if idStr == "" {
 			logger.Info("no subscription id in request")
 
+			w.WriteHeader(http.StatusBadRequest)
 			render.JSON(w, r, RespError("no subscription id in request"))
 
 			return
@@ -59,6 +62,7 @@ func NewUpdateHandler(logger *slog.Logger, updater Updater) http.HandlerFunc {
 		if err != nil {
 			logger.Info("invalid subscription id format", "details", err)
 
+			w.WriteHeader(http.StatusBadRequest)
 			render.JSON(w, r, RespError("invalid subscription id format"))
 
 			return
@@ -87,6 +91,7 @@ func NewUpdateHandler(logger *slog.Logger, updater Updater) http.HandlerFunc {
 		if errors.Is(err, storage.ErrSubscribtionNotFound) {
 			logger.Info("subscription not found", "id", id)
 
+			w.WriteHeader(http.StatusNotFound)
 			render.JSON(w, r, RespError("subscription not found"))
 
 			return
@@ -94,6 +99,7 @@ func NewUpdateHandler(logger *slog.Logger, updater Updater) http.HandlerFunc {
 		if err != nil {
 			logger.Error("failed to update subscription", "details", err)
 
+			w.WriteHeader(http.StatusInternalServerError)
 			render.JSON(w, r, RespError("failed to get subscription"))
 
 			return
@@ -114,6 +120,7 @@ func validateUpdateReq(r *http.Request, w http.ResponseWriter, req *UpdateReques
 	// 1.Price
 	if req.Price < 0 {
 		logger.Error("request price cannot be lower than 0")
+		w.WriteHeader(http.StatusBadRequest)
 		render.JSON(w, r, RespError("request price is invalid"))
 		return false
 	}
@@ -123,6 +130,7 @@ func validateUpdateReq(r *http.Request, w http.ResponseWriter, req *UpdateReques
 		_, err := model.DateFromString(req.EndDate)
 		if err != nil {
 			logger.Error("request end date is invalid", "details", err)
+			w.WriteHeader(http.StatusBadRequest)
 			render.JSON(w, r, RespError("request end date is invalid"))
 			return false
 		}

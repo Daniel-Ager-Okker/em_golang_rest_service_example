@@ -63,11 +63,14 @@ func NewListHandler(logger *slog.Logger, listReader ListReader) http.HandlerFunc
 			slog.String("request_id", middleware.GetReqID(r.Context())),
 		)
 
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
 		// 1.Get subscriptions
 		subscriptions, err := listReader.GetSubscriptions()
 		if err != nil {
 			logger.Error("failed to get subscription", "details", err)
 
+			w.WriteHeader(http.StatusInternalServerError)
 			render.JSON(w, r, ListResponse{Response: RespError("failed to get subscription")})
 
 			return

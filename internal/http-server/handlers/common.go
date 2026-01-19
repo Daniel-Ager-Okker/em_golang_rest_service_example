@@ -15,6 +15,7 @@ func parseReq[T any](r *http.Request, w http.ResponseWriter, logger *slog.Logger
 	if errors.Is(err, io.EOF) {
 		logger.Error("request body is empty")
 
+		w.WriteHeader(http.StatusBadRequest)
 		render.JSON(w, r, RespError("empty request"))
 
 		return false
@@ -23,6 +24,7 @@ func parseReq[T any](r *http.Request, w http.ResponseWriter, logger *slog.Logger
 	if err != nil {
 		logger.Error("failed to decode request body", "details", err)
 
+		w.WriteHeader(http.StatusBadRequest)
 		render.JSON(w, r, RespError("failed to decode request"))
 
 		return false
