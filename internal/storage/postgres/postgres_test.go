@@ -121,27 +121,10 @@ func runTestDbInitMigrations(t *testing.T, ctx context.Context, pool *pgxpool.Po
 			service_name TEXT NOT NULL,
 			price INTEGER NOT NULL,
 			user_id TEXT NOT NULL,
-			start_date TEXT NOT NULL CHECK (
-				start_date ~ '^[0-9]{2}-[0-9]{4}$' AND
-				CAST(SUBSTRING(start_date FROM 1 FOR 2) AS INTEGER) BETWEEN 1 AND 12
-			),
-			end_date TEXT NOT NULL CHECK (
-				end_date ~ '^[0-9]{2}-[0-9]{4}$' AND
-				CAST(SUBSTRING(end_date FROM 1 FOR 2) AS INTEGER) BETWEEN 1 AND 12
-			),
+			start_date DATE NOT NULL,
+			end_date DATE NOT NULL,
 			CONSTRAINT unique_subscription UNIQUE (service_name, user_id),
-			CONSTRAINT check_end_after_start 
-				CHECK (
-					-- sneaky trick (convert 'MM-YYYY' to 'YYYYMM' and compare integers)
-					(
-						CAST(SUBSTRING(end_date FROM 4) AS INTEGER) * 100 + 
-						CAST(SUBSTRING(end_date FROM 1 FOR 2) AS INTEGER)
-					) >
-					(
-						CAST(SUBSTRING(start_date FROM 4) AS INTEGER) * 100 + 
-						CAST(SUBSTRING(start_date FROM 1 FOR 2) AS INTEGER)
-					)
-				)
+			CONSTRAINT check_end_after_start CHECK (end_date > start_date)
 		);
 	`
 
@@ -284,12 +267,12 @@ func TestGetSubscription(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			subscription, err := pgStorage.GetSubscription(tc.id)
 			if err == nil {
-				assert.Equal(t, subscription.ID, tc.id)
-				assert.Equal(t, subscription.ServiceName, spec.ServiceName)
-				assert.Equal(t, subscription.Price, spec.Price)
-				assert.Equal(t, subscription.UserID, spec.UserID)
-				assert.Equal(t, subscription.StartDate, spec.StartDate)
-				assert.Equal(t, subscription.EndDate, spec.EndDate)
+				assert.Equal(t, tc.id, subscription.ID)
+				assert.Equal(t, spec.ServiceName, subscription.ServiceName)
+				assert.Equal(t, spec.Price, subscription.Price)
+				assert.Equal(t, spec.UserID, subscription.UserID)
+				assert.Equal(t, spec.StartDate, subscription.StartDate)
+				assert.Equal(t, spec.EndDate, subscription.EndDate)
 			} else {
 				assert.ErrorContains(t, err, tc.expectedErrMsg)
 			}
@@ -326,12 +309,12 @@ func TestUpdateSubscription(t *testing.T) {
 		assert.NoError(t, err)
 
 		subscription, _ := pgStorage.GetSubscription(id)
-		assert.Equal(t, subscription.ID, id)
-		assert.Equal(t, subscription.ServiceName, spec.ServiceName)
-		assert.Equal(t, subscription.Price, 350)
-		assert.Equal(t, subscription.UserID, spec.UserID)
-		assert.Equal(t, subscription.StartDate, spec.StartDate)
-		assert.Equal(t, subscription.EndDate, model.Date{Month: 1, Year: 2027})
+		assert.Equal(t, id, subscription.ID)
+		assert.Equal(t, spec.ServiceName, subscription.ServiceName)
+		assert.Equal(t, 350, subscription.Price)
+		assert.Equal(t, spec.UserID, subscription.UserID)
+		assert.Equal(t, spec.StartDate, subscription.StartDate)
+		assert.Equal(t, model.Date{Month: 1, Year: 2027}, subscription.EndDate)
 	})
 
 	// 3.2.Update existen OK
@@ -349,12 +332,12 @@ func TestUpdateSubscription(t *testing.T) {
 		assert.NoError(t, err)
 
 		subscription, _ := pgStorage.GetSubscription(id)
-		assert.Equal(t, subscription.ID, id)
-		assert.Equal(t, subscription.ServiceName, spec.ServiceName)
-		assert.Equal(t, subscription.Price, 300)
-		assert.Equal(t, subscription.UserID, spec.UserID)
-		assert.Equal(t, subscription.StartDate, spec.StartDate)
-		assert.Equal(t, subscription.EndDate, spec.EndDate)
+		assert.Equal(t, id, subscription.ID)
+		assert.Equal(t, spec.ServiceName, subscription.ServiceName)
+		assert.Equal(t, 300, subscription.Price)
+		assert.Equal(t, spec.UserID, subscription.UserID)
+		assert.Equal(t, spec.StartDate, subscription.StartDate)
+		assert.Equal(t, spec.EndDate, subscription.EndDate)
 	})
 
 	// 4.Update existen FAIL

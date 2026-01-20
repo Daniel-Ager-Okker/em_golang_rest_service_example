@@ -310,9 +310,81 @@ func TestDateFromString(t *testing.T) {
 	}
 }
 
-func TestToString(t *testing.T) {
-	date := Date{Month: 5, Year: 2025}
-	dateStr := date.ToString()
+func TestDateFromStringISO(t *testing.T) {
+	cases := []struct {
+		name    string
+		dateStr string
+		date    Date
+		errMsg  string
+	}{
+		{
+			name:    "Success",
+			dateStr: "2023-05-01",
+			date:    Date{Month: 5, Year: 2023},
+			errMsg:  "",
+		},
+		{
+			name:    "Not enough date elements",
+			dateStr: "05-2023",
+			date:    Date{},
+			errMsg:  "invalid date string ISO format",
+		},
+		{
+			name:    "Invalid month",
+			dateStr: "2023-trash-01",
+			date:    Date{},
+			errMsg:  "invalid month",
+		},
+		{
+			name:    "Invalid year",
+			dateStr: "trash-05-01",
+			date:    Date{},
+			errMsg:  "invalid year",
+		},
+	}
 
-	assert.Equal(t, "05-2025", dateStr)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			actualDate, err := DateFromStringISO(tc.dateStr)
+			assert.Equal(t, tc.date, actualDate)
+
+			if tc.errMsg == "" {
+				assert.NoError(t, err)
+			} else {
+				assert.ErrorContains(t, err, tc.errMsg)
+			}
+		})
+	}
+}
+
+func TestToString(t *testing.T) {
+	t.Run("Month less than 9", func(t *testing.T) {
+		date := Date{Month: 5, Year: 2025}
+		dateStr := date.ToString()
+
+		assert.Equal(t, "05-2025", dateStr)
+	})
+
+	t.Run("Month more than 9", func(t *testing.T) {
+		date := Date{Month: 11, Year: 2025}
+		dateStr := date.ToString()
+
+		assert.Equal(t, "11-2025", dateStr)
+	})
+}
+
+func TestToStringISO(t *testing.T) {
+	t.Run("Month less than 9", func(t *testing.T) {
+		date := Date{Month: 5, Year: 2025}
+		dateStr := date.ToStringISO()
+
+		assert.Equal(t, "2025-05-01", dateStr)
+	})
+
+	t.Run("Month more than 9", func(t *testing.T) {
+		date := Date{Month: 11, Year: 2025}
+		dateStr := date.ToStringISO()
+
+		assert.Equal(t, "2025-11-01", dateStr)
+	})
 }

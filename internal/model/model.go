@@ -68,6 +68,14 @@ func (d *Date) ToString() string {
 	return fmt.Sprintf("0%d-%d", d.Month, d.Year)
 }
 
+// Convert to string in ISO format YYYY-MM-DD
+func (d *Date) ToStringISO() string {
+	if d.Month > 9 {
+		return fmt.Sprintf("%d-%d-01", d.Year, d.Month)
+	}
+	return fmt.Sprintf("%d-0%d-01", d.Year, d.Month)
+}
+
 // Check if equal to another date
 func (d *Date) EqualTo(other Date) bool {
 	return d.Month == other.Month && d.Year == other.Year
@@ -88,6 +96,26 @@ func DateFromString(str string) (Date, error) {
 	year, err := strconv.Atoi(items[1])
 	if err != nil {
 		return Date{}, errors.New("invalid year")
+	}
+
+	return Date{Month: month, Year: year}, nil
+}
+
+// Construct from string in ISO format YYYY-MM-DD
+func DateFromStringISO(str string) (Date, error) {
+	items := strings.Split(str, "-")
+	if len(items) != 3 {
+		return Date{}, errors.New("invalid date string ISO format")
+	}
+
+	year, err := strconv.Atoi(items[0])
+	if err != nil {
+		return Date{}, errors.New("invalid year")
+	}
+
+	month, err := strconv.Atoi(items[1])
+	if err != nil {
+		return Date{}, errors.New("invalid month")
 	}
 
 	return Date{Month: month, Year: year}, nil

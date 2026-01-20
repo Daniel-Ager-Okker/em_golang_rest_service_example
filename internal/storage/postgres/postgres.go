@@ -108,8 +108,8 @@ func (s *PostgresStorage) CreateSubscription(spec model.SubscriptionSpec) (int64
 		spec.ServiceName,
 		spec.Price,
 		spec.UserID.String(),
-		spec.StartDate.ToString(),
-		spec.EndDate.ToString(),
+		spec.StartDate.ToStringISO(),
+		spec.EndDate.ToStringISO(),
 	).Scan(&idStr)
 
 	if err != nil {
@@ -145,7 +145,17 @@ func (s *PostgresStorage) GetSubscription(id int64) (model.Subscription, error) 
 	ctx := context.Background()
 
 	// 1.Run query
-	query := "SELECT * FROM subscription WHERE id = $1"
+	query := `
+	    SELECT
+	        id,
+		    service_name,
+		    price,
+		    user_id,
+		    start_date::text,
+		    end_date::text
+		FROM subscription
+		WHERE id = $1
+	`
 
 	row := s.pool.QueryRow(ctx, query, id)
 
@@ -174,7 +184,7 @@ func (s *PostgresStorage) GetSubscription(id int64) (model.Subscription, error) 
 	// 2.Return subscription model data
 
 	// 2.1.Start date
-	start, err := model.DateFromString(startDate)
+	start, err := model.DateFromStringISO(startDate)
 	if err != nil {
 		s.logger.Error(loggerMsg, "details", fmt.Errorf("error while getting start date: %w", err))
 		return model.Subscription{}, fmt.Errorf("%s: getting start date: %w", op, err)
@@ -182,7 +192,7 @@ func (s *PostgresStorage) GetSubscription(id int64) (model.Subscription, error) 
 	subscription.StartDate = start
 
 	// 2.2.End date
-	end, err := model.DateFromString(endDate)
+	end, err := model.DateFromStringISO(endDate)
 	if err != nil {
 		s.logger.Error(loggerMsg, "details", fmt.Errorf("error while getting end date: %w", err))
 		return model.Subscription{}, fmt.Errorf("%s: getting end date: %w", op, err)
@@ -226,7 +236,7 @@ func (s *PostgresStorage) UpdateSubscription(id int64, newPrice int, newEnd mode
 		query := "UPDATE subscription SET price = $1, end_date = $2 WHERE id = $3"
 
 		// Run
-		res, err = tx.Exec(ctx, query, newPrice, newEnd.ToString(), id)
+		res, err = tx.Exec(ctx, query, newPrice, newEnd.ToStringISO(), id)
 		if err != nil {
 			s.logger.Error(loggerMsg, "details", err)
 			return err
@@ -294,7 +304,16 @@ func (s *PostgresStorage) GetSubscriptions() ([]model.Subscription, error) {
 	ctx := context.Background()
 
 	// 1.Run query
-	query := "SELECT * FROM subscription"
+	query := `
+	    SELECT
+	        id,
+		    service_name,
+		    price,
+		    user_id,
+		    start_date::text,
+		    end_date::text
+		FROM subscription
+	`
 
 	rows, err := s.pool.Query(ctx, query)
 	if err != nil {
@@ -325,7 +344,7 @@ func (s *PostgresStorage) GetSubscriptions() ([]model.Subscription, error) {
 		}
 
 		// 3.1.Start date
-		start, err := model.DateFromString(startDate)
+		start, err := model.DateFromStringISO(startDate)
 		if err != nil {
 			s.logger.Error(loggerMsg, "details", fmt.Errorf("error while getting start date: %w", err))
 			return []model.Subscription{}, fmt.Errorf("%s: getting start date: %w", op, err)
@@ -333,7 +352,7 @@ func (s *PostgresStorage) GetSubscriptions() ([]model.Subscription, error) {
 		sub.StartDate = start
 
 		// 3.2.End date
-		end, err := model.DateFromString(endDate)
+		end, err := model.DateFromStringISO(endDate)
 		if err != nil {
 			s.logger.Error(loggerMsg, "details", fmt.Errorf("error while getting end date: %w", err))
 			return []model.Subscription{}, fmt.Errorf("%s: getting end date: %w", op, err)

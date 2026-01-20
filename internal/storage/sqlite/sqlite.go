@@ -55,8 +55,8 @@ func (s *SqliteStorage) CreateSubscription(spec model.SubscriptionSpec) (int64, 
 	}
 
 	// 2.Run it
-	startDate := spec.StartDate.ToString()
-	endDate := spec.EndDate.ToString()
+	startDate := spec.StartDate.ToStringISO()
+	endDate := spec.EndDate.ToStringISO()
 
 	res, err := stmt.Exec(spec.ServiceName, spec.Price, spec.UserID, startDate, endDate)
 	if err != nil {
@@ -117,7 +117,7 @@ func (s *SqliteStorage) GetSubscription(id int64) (model.Subscription, error) {
 	// 3.Return subscription model data
 
 	// 3.1.Start date
-	start, err := model.DateFromString(startDate)
+	start, err := model.DateFromStringISO(startDate)
 	if err != nil {
 		s.logger.Error(loggerMsg, "details", fmt.Errorf("error while getting start date: %w", err))
 		return model.Subscription{}, fmt.Errorf("%s: getting start date: %w", op, err)
@@ -125,7 +125,7 @@ func (s *SqliteStorage) GetSubscription(id int64) (model.Subscription, error) {
 	subscription.StartDate = start
 
 	// 3.2.End date
-	end, err := model.DateFromString(endDate)
+	end, err := model.DateFromStringISO(endDate)
 	if err != nil {
 		s.logger.Error(loggerMsg, "details", fmt.Errorf("error while getting end date: %w", err))
 		return model.Subscription{}, fmt.Errorf("%s: getting end date: %w", op, err)
@@ -169,7 +169,7 @@ func (s *SqliteStorage) UpdateSubscription(id int64, newPrice int, newEnd model.
 		}
 
 		// Run
-		res, err = stmt.Exec(newPrice, newEnd.ToString(), id)
+		res, err = stmt.Exec(newPrice, newEnd.ToStringISO(), id)
 		if err != nil {
 			s.logger.Error(loggerMsg, "details", err)
 			return err
@@ -270,7 +270,7 @@ func (s *SqliteStorage) GetSubscriptions() ([]model.Subscription, error) {
 		}
 
 		// 3.1.Start date
-		start, err := model.DateFromString(startDate)
+		start, err := model.DateFromStringISO(startDate)
 		if err != nil {
 			s.logger.Error(loggerMsg, "details", fmt.Errorf("error while getting start date: %w", err))
 			return []model.Subscription{}, fmt.Errorf("%s: getting start date: %w", op, err)
@@ -278,7 +278,7 @@ func (s *SqliteStorage) GetSubscriptions() ([]model.Subscription, error) {
 		sub.StartDate = start
 
 		// 3.2.End date
-		end, err := model.DateFromString(endDate)
+		end, err := model.DateFromStringISO(endDate)
 		if err != nil {
 			s.logger.Error(loggerMsg, "details", fmt.Errorf("error while getting end date: %w", err))
 			return []model.Subscription{}, fmt.Errorf("%s: getting end date: %w", op, err)
