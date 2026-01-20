@@ -13,9 +13,9 @@ type ListReader struct {
 	mock.Mock
 }
 
-// GetSubscriptions provides a mock function with no fields
-func (_m *ListReader) GetSubscriptions() ([]model.Subscription, error) {
-	ret := _m.Called()
+// GetSubscriptions provides a mock function with given fields: limit, offset
+func (_m *ListReader) GetSubscriptions(limit *int, offset *int) ([]model.Subscription, error) {
+	ret := _m.Called(limit, offset)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetSubscriptions")
@@ -23,19 +23,19 @@ func (_m *ListReader) GetSubscriptions() ([]model.Subscription, error) {
 
 	var r0 []model.Subscription
 	var r1 error
-	if rf, ok := ret.Get(0).(func() ([]model.Subscription, error)); ok {
-		return rf()
+	if rf, ok := ret.Get(0).(func(*int, *int) ([]model.Subscription, error)); ok {
+		return rf(limit, offset)
 	}
-	if rf, ok := ret.Get(0).(func() []model.Subscription); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(*int, *int) []model.Subscription); ok {
+		r0 = rf(limit, offset)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]model.Subscription)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
+	if rf, ok := ret.Get(1).(func(*int, *int) error); ok {
+		r1 = rf(limit, offset)
 	} else {
 		r1 = ret.Error(1)
 	}

@@ -123,7 +123,7 @@ type Repo interface {
 	GetSubscription(id int64) (model.Subscription, error)
 	UpdateSubscription(id int64, newPrice int, newEnd model.Date) error
 	DeleteSubscription(id int64) error
-	GetSubscriptions() ([]model.Subscription, error)
+	GetSubscriptions(limit, offset *int) ([]model.Subscription, error)
 }
 
 func setupRouter(l *slog.Logger, repo Repo) *chi.Mux {

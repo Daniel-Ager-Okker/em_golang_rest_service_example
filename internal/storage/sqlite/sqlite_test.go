@@ -291,6 +291,7 @@ func TestDeleteSubscription(t *testing.T) {
 }
 
 func TestGetSubscriptions(t *testing.T) {
+	// 1.Init
 	db := newTestDB(t)
 	defer db.Close()
 
@@ -298,6 +299,7 @@ func TestGetSubscriptions(t *testing.T) {
 
 	sqliteStorage := newStorage(db, logger)
 
+	// 2.Prepare
 	services := []string{
 		"Yandex", "Google", "Netflix", "Wink",
 	}
@@ -317,12 +319,55 @@ func TestGetSubscriptions(t *testing.T) {
 		assert.Nil(t, err)
 	}
 
-	subs, err := sqliteStorage.GetSubscriptions()
-	assert.Nil(t, err)
-
-	for i := 0; i < len(subs); i++ {
-		assert.Equal(t, subs[i].ID, int64(i+1))
-		assert.Equal(t, subs[i].ServiceName, services[i])
-		assert.Equal(t, subs[i].Price, prices[i])
+	// 2.Tests
+	cases := []struct {
+		name   string
+		limit  *int
+		offset *int
+		errMsg string
+	}{
+		{
+			name: "Success no limit and offset",
+		},
+		{
+			name:   "Success with limit and offset",
+			limit:  intPointerHelper(2),
+			offset: intPointerHelper(0),
+		},
+		{
+			name:   "Fail got limit but no offset",
+			limit:  intPointerHelper(2),
+			errMsg: "no offset value while limit is set",
+		},
+		{
+			name:   "Fail got offset but no limit",
+			offset: intPointerHelper(2),
+			errMsg: "no limit value while offset is set",
+		},
 	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			subs, err := sqliteStorage.GetSubscriptions(tc.limit, tc.offset)
+
+			if tc.errMsg == "" {
+				assert.NoError(t, err)
+			} else {
+				assert.ErrorContains(t, err, tc.errMsg)
+			}
+
+			for i := 0; i < len(subs); i++ {
+				assert.Equal(t, subs[i].ID, int64(i+1))
+				assert.Equal(t, subs[i].ServiceName, services[i])
+				assert.Equal(t, subs[i].Price, prices[i])
+			}
+		})
+	}
+
+}
+
+func intPointerHelper(value int) *int {
+	p := new(int)
+	*p = value
+	return p
 }

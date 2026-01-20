@@ -4,6 +4,7 @@ import (
 	"em_golang_rest_service_example/internal/model"
 	"log/slog"
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
@@ -44,7 +45,7 @@ type ListResponse struct {
 
 //go:generate go run github.com/vektra/mockery/v2@v2.53.5 --name=ListReader
 type ListReader interface {
-	GetSubscriptions() ([]model.Subscription, error)
+	GetSubscriptions(limit, offset *int) ([]model.Subscription, error)
 }
 
 // NewListHandler godoc
@@ -65,8 +66,22 @@ func NewListHandler(logger *slog.Logger, listReader ListReader) http.HandlerFunc
 
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
-		// 1.Get subscriptions
-		subscriptions, err := listReader.GetSubscriptions()
+		// 1.Get optional params and validate it
+		limit, offset, ok := getValidatedOptParams(r, w, logger)
+		if !ok {
+			return
+		}
+
+		// 2.Get subscriptions
+		var subscriptions []model.Subscription
+		var err error
+
+		if limit == 0 && offset == 0 {
+			subscriptions, err = listReader.GetSubscriptions(nil, nil)
+		} else {
+			subscriptions, err = listReader.GetSubscriptions(&limit, &offset)
+		}
+
 		if err != nil {
 			logger.Error("failed to get subscription", "details", err)
 
@@ -82,6 +97,69 @@ func NewListHandler(logger *slog.Logger, listReader ListReader) http.HandlerFunc
 		resp := makeListResp(subscriptions)
 		render.JSON(w, r, resp)
 	}
+}
+
+func getValidatedOptParams(r *http.Request, w http.ResponseWriter, logger *slog.Logger) (int, int, bool) {
+	limitStr := r.URL.Query().Get("limit")
+	offsetStr := r.URL.Query().Get("offset")
+
+	if limitStr == "" && offsetStr == "" {
+		return 0, 0, true
+	}
+	if limitStr != "" && offsetStr == "" {
+		logger.Error("no offset value while limit is set")
+
+		w.WriteHeader(http.StatusBadRequest)
+		render.JSON(w, r, ListResponse{Response: RespError("no offset value while limit is set")})
+
+		return 0, 0, false
+	}
+	if limitStr == "" && offsetStr != "" {
+		logger.Error("no offset value while limit is set")
+
+		w.WriteHeader(http.StatusBadRequest)
+		render.JSON(w, r, ListResponse{Response: RespError("no limit value while offset is set")})
+
+		return 0, 0, false
+	}
+
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil {
+		logger.Error("invalid limit format", "details", err)
+
+		w.WriteHeader(http.StatusBadRequest)
+		render.JSON(w, r, ListResponse{Response: RespError("invalid limit format")})
+
+		return 0, 0, false
+	}
+	if limit < 0 {
+		logger.Error("invalid limit value (less than zero)")
+
+		w.WriteHeader(http.StatusBadRequest)
+		render.JSON(w, r, ListResponse{Response: RespError("invalid limit value (less than zero)")})
+
+		return 0, 0, false
+	}
+
+	offset, err := strconv.Atoi(offsetStr)
+	if err != nil {
+		logger.Error("invalid offset format", "details", err)
+
+		w.WriteHeader(http.StatusBadRequest)
+		render.JSON(w, r, ListResponse{Response: RespError("invalid offset format")})
+
+		return 0, 0, false
+	}
+	if offset < 0 {
+		logger.Error("invalid offset value (less than zero)")
+
+		w.WriteHeader(http.StatusBadRequest)
+		render.JSON(w, r, ListResponse{Response: RespError("invalid offset value (less than zero)")})
+
+		return 0, 0, false
+	}
+
+	return limit, offset, true
 }
 
 func makeListResp(subscriptions []model.Subscription) ListResponse {

@@ -167,7 +167,8 @@ func TestTotalCostHandler(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			listMock := mocks.NewListReader(t)
 			if tc.mockError != nil || tc.respError == "" {
-				listMock.On("GetSubscriptions").Return(allSubscriptions, tc.mockError)
+				var limit, offset *int
+				listMock.On("GetSubscriptions", limit, offset).Return(allSubscriptions, tc.mockError)
 			}
 
 			router := chi.NewRouter()

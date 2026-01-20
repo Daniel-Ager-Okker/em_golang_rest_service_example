@@ -70,7 +70,7 @@ func NewTotalCostHandler(logger *slog.Logger, listReader ListReader) http.Handle
 		}
 
 		// 3.Get all subscriptions
-		subscriptions, err := listReader.GetSubscriptions()
+		subscriptions, err := listReader.GetSubscriptions(nil, nil)
 		if err != nil {
 			logger.Error("failed to get subscription", "details", err)
 

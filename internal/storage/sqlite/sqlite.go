@@ -227,24 +227,50 @@ func (s *SqliteStorage) DeleteSubscription(id int64) error {
 	return nil
 }
 
-func (s *SqliteStorage) GetSubscriptions() ([]model.Subscription, error) {
+func (s *SqliteStorage) GetSubscriptions(limit, offset *int) ([]model.Subscription, error) {
 	const op = "storage.sqlite.GetSubscriptions"
 	var loggerMsg string = fmt.Sprintf("operation is %s", op)
 
-	// 1.Prepare query
-	query := `SELECT * FROM subscription`
-
-	stmt, err := s.db.Prepare(query)
-	if err != nil {
-		s.logger.Error(loggerMsg, "details", err)
-		return []model.Subscription{}, fmt.Errorf("%s: prepare statement: %w", op, err)
+	// 1.Validation
+	if limit != nil && offset == nil {
+		s.logger.Error(loggerMsg, "details", "no offset value while limit is set")
+		return []model.Subscription{}, errors.New("no offset value while limit is set")
+	} else if limit == nil && offset != nil {
+		s.logger.Error(loggerMsg, "details", "no limit value while offset is set")
+		return []model.Subscription{}, errors.New("no limit value while offset is set")
 	}
 
-	// 2.Run it
-	rows, err := stmt.Query()
-	if err != nil {
-		s.logger.Error(loggerMsg, "details", err)
-		return []model.Subscription{}, fmt.Errorf("%s: exec statement: %w", op, err)
+	// 2.Prepare query and exec needed
+	var rows *sql.Rows
+
+	if limit == nil {
+		query := "SELECT * FROM subscription"
+
+		stmt, err := s.db.Prepare(query)
+		if err != nil {
+			s.logger.Error(loggerMsg, "details", err)
+			return []model.Subscription{}, fmt.Errorf("%s: prepare statement: %w", op, err)
+		}
+
+		rows, err = stmt.Query()
+		if err != nil {
+			s.logger.Error(loggerMsg, "details", err)
+			return []model.Subscription{}, fmt.Errorf("%s: exec statement: %w", op, err)
+		}
+	} else {
+		query := "SELECT * FROM subscription LIMIT ? OFFSET ?"
+
+		stmt, err := s.db.Prepare(query)
+		if err != nil {
+			s.logger.Error(loggerMsg, "details", err)
+			return []model.Subscription{}, fmt.Errorf("%s: prepare statement: %w", op, err)
+		}
+
+		rows, err = stmt.Query(*limit, *offset)
+		if err != nil {
+			s.logger.Error(loggerMsg, "details", err)
+			return []model.Subscription{}, fmt.Errorf("%s: exec statement: %w", op, err)
+		}
 	}
 
 	// 3.Parse and get data
@@ -256,7 +282,7 @@ func (s *SqliteStorage) GetSubscriptions() ([]model.Subscription, error) {
 		var startDate string
 		var endDate string
 
-		err = rows.Scan(
+		err := rows.Scan(
 			&sub.ID,
 			&sub.ServiceName,
 			&sub.Price,

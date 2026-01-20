@@ -297,28 +297,61 @@ func (s *PostgresStorage) DeleteSubscription(id int64) error {
 	return nil
 }
 
-func (s *PostgresStorage) GetSubscriptions() ([]model.Subscription, error) {
+func (s *PostgresStorage) GetSubscriptions(limit, offset *int) ([]model.Subscription, error) {
 	const op = "storage.postgres.GetSubscriptions"
 	var loggerMsg string = fmt.Sprintf("operation is %s", op)
 
 	ctx := context.Background()
 
-	// 1.Run query
-	query := `
-	    SELECT
-	        id,
-		    service_name,
-		    price,
-		    user_id,
-		    start_date::text,
-		    end_date::text
-		FROM subscription
-	`
+	// 1.Validation
+	if limit != nil && offset == nil {
+		s.logger.Error(loggerMsg, "details", "no offset value while limit is set")
+		return []model.Subscription{}, errors.New("no offset value while limit is set")
+	} else if limit == nil && offset != nil {
+		s.logger.Error(loggerMsg, "details", "no limit value while offset is set")
+		return []model.Subscription{}, errors.New("no limit value while offset is set")
+	}
 
-	rows, err := s.pool.Query(ctx, query)
-	if err != nil {
-		s.logger.Error(loggerMsg, "details", err)
-		return []model.Subscription{}, fmt.Errorf("%s: exec statement: %w", op, err)
+	// 2.Prepare query and exec needed
+	var rows pgx.Rows
+	var err error
+
+	if limit == nil {
+		query := `
+			SELECT
+				id,
+				service_name,
+				price,
+				user_id,
+				start_date::text,
+				end_date::text
+			FROM subscription
+		`
+
+		rows, err = s.pool.Query(ctx, query)
+		if err != nil {
+			s.logger.Error(loggerMsg, "details", err)
+			return []model.Subscription{}, fmt.Errorf("%s: exec statement: %w", op, err)
+		}
+	} else {
+		query := `
+			SELECT
+				id,
+				service_name,
+				price,
+				user_id,
+				start_date::text,
+				end_date::text
+			FROM subscription
+			LIMIT $1
+			OFFSET $2
+		`
+
+		rows, err = s.pool.Query(ctx, query, *limit, *offset)
+		if err != nil {
+			s.logger.Error(loggerMsg, "details", err)
+			return []model.Subscription{}, fmt.Errorf("%s: exec statement: %w", op, err)
+		}
 	}
 
 	// 3.Parse and get data
