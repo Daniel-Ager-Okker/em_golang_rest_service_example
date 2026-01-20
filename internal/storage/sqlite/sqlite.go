@@ -135,48 +135,37 @@ func (s *SqliteStorage) GetSubscription(id int64) (model.Subscription, error) {
 	return subscription, nil
 }
 
-func (s *SqliteStorage) UpdateSubscription(id int64, newPrice int, newEnd model.Date) error {
+func (s *SqliteStorage) UpdateSubscription(id int64, newServiceName string, newPrice int, newStart, newEnd model.Date) error {
 	const op = "storage.sqlite.UpdateSubscription"
 	var loggerMsg string = fmt.Sprintf("operation is %s", op)
 
 	var res sql.Result
 
-	// 1.Run needed query in according with optional end_date value
-	if newEnd.Month == 0 && newEnd.Year == 0 {
-		// Prepare
-		query := "UPDATE subscription SET price = ? WHERE id = ?"
+	// 1.Prepare query in according with end_date value
+	query := "UPDATE subscription SET service_name = ?, price = ?, start_date = ?"
+	args := []interface{}{newServiceName, newPrice, newStart.ToStringISO()}
 
-		stmt, err := s.db.Prepare(query)
-		if err != nil {
-			s.logger.Error(loggerMsg, "details", err)
-			return fmt.Errorf("%s: prepare statement: %w", op, err)
-		}
+	if !(newEnd.Month == 0 && newEnd.Year == 0) {
+		query += ", end_date = ?"
+		args = append(args, newEnd.ToStringISO())
+	}
+	query += " WHERE id = ?"
+	args = append(args, id)
 
-		// Run
-		res, err = stmt.Exec(newPrice, id)
-		if err != nil {
-			s.logger.Error(loggerMsg, "details", err)
-			return err
-		}
-
-	} else {
-		query := "UPDATE subscription SET price = ?, end_date = ? WHERE id = ?"
-
-		stmt, err := s.db.Prepare(query)
-		if err != nil {
-			s.logger.Error(loggerMsg, "details", err)
-			return fmt.Errorf("%s: prepare statement: %w", op, err)
-		}
-
-		// Run
-		res, err = stmt.Exec(newPrice, newEnd.ToStringISO(), id)
-		if err != nil {
-			s.logger.Error(loggerMsg, "details", err)
-			return err
-		}
+	stmt, err := s.db.Prepare(query)
+	if err != nil {
+		s.logger.Error(loggerMsg, "details", err)
+		return fmt.Errorf("%s: prepare statement: %w", op, err)
 	}
 
-	// 2.Check if was updated and return corresponding status
+	// 2.Run
+	res, err = stmt.Exec(args...)
+	if err != nil {
+		s.logger.Error(loggerMsg, "details", err)
+		return err
+	}
+
+	// 3.Check if was updated and return corresponding status
 	changedRows, err := res.RowsAffected()
 	if err != nil {
 		s.logger.Error(loggerMsg, "details", err)

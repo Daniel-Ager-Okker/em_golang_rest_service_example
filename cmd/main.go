@@ -121,7 +121,7 @@ func setupLogger(env string) *slog.Logger {
 type Repo interface {
 	CreateSubscription(subscription model.SubscriptionSpec) (int64, error)
 	GetSubscription(id int64) (model.Subscription, error)
-	UpdateSubscription(id int64, newPrice int, newEnd model.Date) error
+	UpdateSubscription(id int64, newServiceName string, newPrice int, newStart, newEnd model.Date) error
 	DeleteSubscription(id int64) error
 	GetSubscriptions(limit, offset *int) ([]model.Subscription, error)
 }

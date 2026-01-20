@@ -17,8 +17,14 @@ import (
 // swagger:model UpdateRequest
 // @ID UpdateRequest
 type UpdateRequest struct {
+	// New service name (required)
+	ServiceName string `json:"service_name"`
+
 	// New price (required)
 	Price int `json:"price"`
+
+	// New start date
+	StartDate string `json:"start_date"`
 
 	// New end date (optional)
 	EndDate string `json:"end_date,omitempty"`
@@ -26,7 +32,7 @@ type UpdateRequest struct {
 
 //go:generate go run github.com/vektra/mockery/v2@v2.53.5 --name=Updater
 type Updater interface {
-	UpdateSubscription(id int64, newPrice int, newEnd model.Date) error
+	UpdateSubscription(id int64, newServiceName string, newPrice int, newStart, newEnd model.Date) error
 }
 
 // NewUpdateHandler godoc
@@ -81,13 +87,15 @@ func NewUpdateHandler(logger *slog.Logger, updater Updater) http.HandlerFunc {
 		}
 
 		// 3.Fill end_date with value if need
+		startDate, _ := model.DateFromString(req.StartDate)
+
 		endDate := model.Date{}
 		if req.EndDate != "" {
 			endDate, _ = model.DateFromString(req.EndDate)
 		}
 
 		// 4.Update
-		err = updater.UpdateSubscription(int64(id), req.Price, endDate)
+		err = updater.UpdateSubscription(int64(id), req.ServiceName, req.Price, startDate, endDate)
 		if errors.Is(err, storage.ErrSubscribtionNotFound) {
 			logger.Info("subscription not found", "id", id)
 
@@ -117,7 +125,15 @@ func NewUpdateHandler(logger *slog.Logger, updater Updater) http.HandlerFunc {
 }
 
 func validateUpdateReq(r *http.Request, w http.ResponseWriter, req *UpdateRequest, logger *slog.Logger) bool {
-	// 1.Price
+	// 1.Service name
+	if req.ServiceName == "" {
+		logger.Error("request service name is empty")
+		w.WriteHeader(http.StatusBadRequest)
+		render.JSON(w, r, RespError("request service name is empty"))
+		return false
+	}
+
+	// 2.Price
 	if req.Price < 0 {
 		logger.Error("request price cannot be lower than 0")
 		w.WriteHeader(http.StatusBadRequest)
@@ -125,7 +141,22 @@ func validateUpdateReq(r *http.Request, w http.ResponseWriter, req *UpdateReques
 		return false
 	}
 
-	// 2.End date
+	// 3.Start date
+	if req.StartDate == "" {
+		logger.Error("request start date is empty")
+		w.WriteHeader(http.StatusBadRequest)
+		render.JSON(w, r, RespError("request start date is empty"))
+		return false
+	}
+	_, err := model.DateFromString(req.StartDate)
+	if err != nil {
+		logger.Error("request start date is invalid", "details", err)
+		w.WriteHeader(http.StatusBadRequest)
+		render.JSON(w, r, RespError("request start date is invalid"))
+		return false
+	}
+
+	// 4.End date
 	if req.EndDate != "" {
 		_, err := model.DateFromString(req.EndDate)
 		if err != nil {

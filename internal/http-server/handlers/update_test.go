@@ -20,13 +20,15 @@ import (
 )
 
 type updateTCase struct {
-	name       string
-	id         string
-	newPrice   int
-	newEndDate string
-	respCode   int
-	respError  string
-	mockError  error
+	name           string
+	id             string
+	newServiceName string
+	newPrice       int
+	newStartDate   string
+	newEndDate     string
+	respCode       int
+	respError      string
+	mockError      error
 }
 
 func TestUpdateHandler(t *testing.T) {
@@ -35,11 +37,13 @@ func TestUpdateHandler(t *testing.T) {
 	// 1.Common cases
 	commonCases := []updateTCase{
 		{
-			name:       "Success",
-			id:         "1",
-			newPrice:   350,
-			newEndDate: "04-2026",
-			respCode:   http.StatusOK,
+			name:           "Success",
+			id:             "1",
+			newServiceName: "Яндекс",
+			newPrice:       350,
+			newStartDate:   "03-2026",
+			newEndDate:     "04-2026",
+			respCode:       http.StatusOK,
 		},
 		{
 			name:      "Invalid id",
@@ -48,37 +52,67 @@ func TestUpdateHandler(t *testing.T) {
 			respError: "invalid subscription id format",
 		},
 		{
-			name:      "Validation error on price",
+			name:      "Validation error on service name",
 			id:        "2",
-			newPrice:  -5,
 			respCode:  http.StatusBadRequest,
-			respError: "request price is invalid",
+			respError: "request service name is empty",
 		},
 		{
-			name:       "Validation error on new end date",
-			id:         "2",
-			newPrice:   155,
-			newEndDate: "trash-garbage",
-			respCode:   http.StatusBadRequest,
-			respError:  "request end date is invalid",
+			name:           "Validation error on price",
+			id:             "2",
+			newServiceName: "Гугл",
+			newPrice:       -5,
+			respCode:       http.StatusBadRequest,
+			respError:      "request price is invalid",
 		},
 		{
-			name:       "Not found subscription",
-			id:         "3",
-			newPrice:   155,
-			newEndDate: "05-2025",
-			respCode:   http.StatusNotFound,
-			respError:  "subscription not found",
-			mockError:  storage.ErrSubscribtionNotFound,
+			name:           "Validation error on start date (empty)",
+			id:             "2",
+			newServiceName: "Гугл",
+			newPrice:       5,
+			respCode:       http.StatusBadRequest,
+			respError:      "request start date is empty",
 		},
 		{
-			name:       "Any other storage error",
-			id:         "3",
-			newPrice:   155,
-			newEndDate: "05-2025",
-			respCode:   http.StatusInternalServerError,
-			respError:  "failed to get subscription",
-			mockError:  errors.New("some error"),
+			name:           "Validation error on start date (invalid)",
+			id:             "2",
+			newServiceName: "Гугл",
+			newPrice:       5,
+			newStartDate:   "trash trashovich",
+			respCode:       http.StatusBadRequest,
+			respError:      "request start date is invalid",
+		},
+		{
+			name:           "Validation error on new end date",
+			id:             "2",
+			newServiceName: "Амедиатека",
+			newPrice:       155,
+			newStartDate:   "01-2027",
+			newEndDate:     "trash-garbage",
+			respCode:       http.StatusBadRequest,
+			respError:      "request end date is invalid",
+		},
+		{
+			name:           "Not found subscription",
+			id:             "3",
+			newServiceName: "Подписки.net",
+			newPrice:       155,
+			newStartDate:   "01-2025",
+			newEndDate:     "05-2025",
+			respCode:       http.StatusNotFound,
+			respError:      "subscription not found",
+			mockError:      storage.ErrSubscribtionNotFound,
+		},
+		{
+			name:           "Any other storage error",
+			id:             "3",
+			newServiceName: "Ошибочная подписка",
+			newPrice:       155,
+			newStartDate:   "04-2025",
+			newEndDate:     "05-2025",
+			respCode:       http.StatusInternalServerError,
+			respError:      "failed to get subscription",
+			mockError:      errors.New("some error"),
 		},
 	}
 
@@ -89,9 +123,13 @@ func TestUpdateHandler(t *testing.T) {
 			if tc.respError == "" || tc.mockError != nil {
 				id, err := strconv.Atoi(tc.id)
 				if err == nil {
+					newStartDate, err := model.DateFromString(tc.newStartDate)
+					assert.NoError(t, err)
+
 					newEndDate, err := model.DateFromString(tc.newEndDate)
 					assert.NoError(t, err)
-					updaterMock.On("UpdateSubscription", int64(id), tc.newPrice, newEndDate).Return(tc.mockError)
+
+					updaterMock.On("UpdateSubscription", int64(id), tc.newServiceName, tc.newPrice, newStartDate, newEndDate).Return(tc.mockError)
 				}
 
 			}
@@ -167,8 +205,8 @@ func updateRespCheck(t *testing.T, l *slog.Logger, u Updater, tc *updateTCase, i
 // Transform test case data to string
 func updateTCaseToStr(tc *updateTCase) string {
 	input := fmt.Sprintf(
-		`{"price": %d, "end_date": "%s"}`,
-		tc.newPrice, tc.newEndDate,
+		`{"service_name": "%s", "price": %d, "start_date": "%s", "end_date": "%s"}`, tc.newServiceName,
+		tc.newPrice, tc.newStartDate, tc.newEndDate,
 	)
 	return input
 }

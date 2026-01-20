@@ -202,7 +202,7 @@ func (s *PostgresStorage) GetSubscription(id int64) (model.Subscription, error) 
 	return subscription, nil
 }
 
-func (s *PostgresStorage) UpdateSubscription(id int64, newPrice int, newEnd model.Date) error {
+func (s *PostgresStorage) UpdateSubscription(id int64, newServiceName string, newPrice int, newStart, newEnd model.Date) error {
 	const op = "storage.postgres.UpdateSubscription"
 	var loggerMsg string = fmt.Sprintf("operation is %s", op)
 
@@ -219,31 +219,26 @@ func (s *PostgresStorage) UpdateSubscription(id int64, newPrice int, newEnd mode
 
 	defer tx.Rollback(ctx)
 
-	// 2.Run needed query in according with optional end_date value
-	if newEnd.Month == 0 && newEnd.Year == 0 {
-		// Prepare
-		query := "UPDATE subscription SET price = $1 WHERE id = $2"
+	// 2.Prepare query in according with optional end_date value
+	query := "UPDATE subscription SET service_name = $1, price = $2, start_date = $3"
+	args := []interface{}{newServiceName, newPrice, newStart.ToStringISO()}
 
-		// Run
-		res, err = tx.Exec(ctx, query, newPrice, id)
-		if err != nil {
-			s.logger.Error(loggerMsg, "details", err)
-			return err
-		}
-
+	if !(newEnd.Month == 0 && newEnd.Year == 0) {
+		query += ", end_date = $4 WHERE id = $5"
+		args = append(args, newEnd.ToStringISO())
 	} else {
-		// Prepare
-		query := "UPDATE subscription SET price = $1, end_date = $2 WHERE id = $3"
+		query += " WHERE id = $4"
+	}
+	args = append(args, id)
 
-		// Run
-		res, err = tx.Exec(ctx, query, newPrice, newEnd.ToStringISO(), id)
-		if err != nil {
-			s.logger.Error(loggerMsg, "details", err)
-			return err
-		}
+	// 3.Run
+	res, err = tx.Exec(ctx, query, args...)
+	if err != nil {
+		s.logger.Error(loggerMsg, "details", err)
+		return err
 	}
 
-	// 3.Check if was updated and commit in case of success
+	// 4.Check if was updated and commit in case of success
 	if res.RowsAffected() == 0 {
 		s.logger.Error(loggerMsg, "details", storage.ErrSubscribtionNotFound)
 		return storage.ErrSubscribtionNotFound

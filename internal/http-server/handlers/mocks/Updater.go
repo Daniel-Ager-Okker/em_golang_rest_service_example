@@ -13,17 +13,17 @@ type Updater struct {
 	mock.Mock
 }
 
-// UpdateSubscription provides a mock function with given fields: id, newPrice, newEnd
-func (_m *Updater) UpdateSubscription(id int64, newPrice int, newEnd model.Date) error {
-	ret := _m.Called(id, newPrice, newEnd)
+// UpdateSubscription provides a mock function with given fields: id, newServiceName, newPrice, newStart, newEnd
+func (_m *Updater) UpdateSubscription(id int64, newServiceName string, newPrice int, newStart model.Date, newEnd model.Date) error {
+	ret := _m.Called(id, newServiceName, newPrice, newStart, newEnd)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateSubscription")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(int64, int, model.Date) error); ok {
-		r0 = rf(id, newPrice, newEnd)
+	if rf, ok := ret.Get(0).(func(int64, string, int, model.Date, model.Date) error); ok {
+		r0 = rf(id, newServiceName, newPrice, newStart, newEnd)
 	} else {
 		r0 = ret.Error(0)
 	}

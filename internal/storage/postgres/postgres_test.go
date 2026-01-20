@@ -290,7 +290,7 @@ func TestUpdateSubscription(t *testing.T) {
 
 	// 2.Update some non-existen values
 	t.Run("Update non-existen", func(t *testing.T) {
-		err := pgStorage.UpdateSubscription(532, 350, model.Date{Month: 1, Year: 1991})
+		err := pgStorage.UpdateSubscription(532, "Any", 350, model.Date{Month: 1, Year: 1990}, model.Date{Month: 1, Year: 1991})
 		assert.ErrorIs(t, err, storage.ErrSubscribtionNotFound)
 	})
 
@@ -305,12 +305,12 @@ func TestUpdateSubscription(t *testing.T) {
 		}
 		id, _ := pgStorage.CreateSubscription(spec)
 
-		err := pgStorage.UpdateSubscription(id, 350, model.Date{Month: 1, Year: 2027})
+		err := pgStorage.UpdateSubscription(id, "Яндекс", 350, spec.StartDate, model.Date{Month: 1, Year: 2027})
 		assert.NoError(t, err)
 
 		subscription, _ := pgStorage.GetSubscription(id)
 		assert.Equal(t, id, subscription.ID)
-		assert.Equal(t, spec.ServiceName, subscription.ServiceName)
+		assert.Equal(t, "Яндекс", subscription.ServiceName)
 		assert.Equal(t, 350, subscription.Price)
 		assert.Equal(t, spec.UserID, subscription.UserID)
 		assert.Equal(t, spec.StartDate, subscription.StartDate)
@@ -318,7 +318,7 @@ func TestUpdateSubscription(t *testing.T) {
 	})
 
 	// 3.2.Update existen OK
-	t.Run("Update existen OK only price", func(t *testing.T) {
+	t.Run("Update existen OK no end date", func(t *testing.T) {
 		spec := model.SubscriptionSpec{
 			ServiceName: "Yandex",
 			Price:       400,
@@ -328,7 +328,7 @@ func TestUpdateSubscription(t *testing.T) {
 		}
 		id, _ := pgStorage.CreateSubscription(spec)
 
-		err := pgStorage.UpdateSubscription(id, 300, model.Date{})
+		err := pgStorage.UpdateSubscription(id, spec.ServiceName, 300, spec.StartDate, model.Date{})
 		assert.NoError(t, err)
 
 		subscription, _ := pgStorage.GetSubscription(id)
@@ -351,7 +351,7 @@ func TestUpdateSubscription(t *testing.T) {
 		}
 		id, _ := pgStorage.CreateSubscription(spec)
 
-		err := pgStorage.UpdateSubscription(id, 500, model.Date{Month: 12, Year: 2025})
+		err := pgStorage.UpdateSubscription(id, spec.ServiceName, 500, spec.StartDate, model.Date{Month: 12, Year: 2025})
 		assert.ErrorContains(t, err, "constraint")
 	})
 }

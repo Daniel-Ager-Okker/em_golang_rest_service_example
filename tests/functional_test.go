@@ -114,8 +114,10 @@ func TestUpdate(t *testing.T) {
 
 	// 2.Update it
 	updateReq := handlers.UpdateRequest{
-		Price:   750,
-		EndDate: "03-2026",
+		ServiceName: "Нетфликс",
+		Price:       750,
+		StartDate:   "02-2026",
+		EndDate:     "03-2026",
 	}
 
 	e.PATCH("/subscription/" + strconv.FormatInt(int64(id), 10)).
@@ -127,10 +129,10 @@ func TestUpdate(t *testing.T) {
 	// 3.Get it updated
 	expectedResp := handlers.ReadResponse{
 		Id:          int64(id),
-		ServiceName: req.ServiceName,
+		ServiceName: updateReq.ServiceName,
 		Price:       updateReq.Price,
 		UserID:      req.UserID,
-		StartDate:   req.StartDate,
+		StartDate:   updateReq.StartDate,
 		EndDate:     updateReq.EndDate,
 		Response:    handlers.RespOK(),
 	}

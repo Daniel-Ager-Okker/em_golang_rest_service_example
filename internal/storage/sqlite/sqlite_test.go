@@ -195,7 +195,7 @@ func TestUpdateSubscription(t *testing.T) {
 
 	// 2.Update some non-existen values
 	t.Run("Update non-existen", func(t *testing.T) {
-		err := sqliteStorage.UpdateSubscription(532, 350, model.Date{Month: 1, Year: 1991})
+		err := sqliteStorage.UpdateSubscription(532, "Any non-existen", 350, model.Date{Month: 1, Year: 1990}, model.Date{Month: 1, Year: 1991})
 		assert.ErrorContains(t, err, storage.ErrSubscribtionNotFound.Error())
 	})
 
@@ -210,20 +210,20 @@ func TestUpdateSubscription(t *testing.T) {
 		}
 		id, _ := sqliteStorage.CreateSubscription(spec)
 
-		err := sqliteStorage.UpdateSubscription(id, 350, model.Date{Month: 1, Year: 2027})
+		err := sqliteStorage.UpdateSubscription(id, "Яндекс", 350, spec.StartDate, model.Date{Month: 1, Year: 2027})
 		assert.NoError(t, err)
 
 		subscription, _ := sqliteStorage.GetSubscription(id)
-		assert.Equal(t, subscription.ID, id)
-		assert.Equal(t, subscription.ServiceName, spec.ServiceName)
-		assert.Equal(t, subscription.Price, 350)
-		assert.Equal(t, subscription.UserID, spec.UserID)
-		assert.Equal(t, subscription.StartDate, spec.StartDate)
+		assert.Equal(t, id, subscription.ID)
+		assert.Equal(t, "Яндекс", subscription.ServiceName)
+		assert.Equal(t, 350, subscription.Price)
+		assert.Equal(t, spec.UserID, subscription.UserID)
+		assert.Equal(t, spec.StartDate, subscription.StartDate)
 		assert.Equal(t, subscription.EndDate, model.Date{Month: 1, Year: 2027})
 	})
 
 	// 3.2.Update existen OK
-	t.Run("Update existen OK only price", func(t *testing.T) {
+	t.Run("Update existen OK no end date", func(t *testing.T) {
 		spec := model.SubscriptionSpec{
 			ServiceName: "Yandex",
 			Price:       400,
@@ -233,16 +233,16 @@ func TestUpdateSubscription(t *testing.T) {
 		}
 		id, _ := sqliteStorage.CreateSubscription(spec)
 
-		err := sqliteStorage.UpdateSubscription(id, 300, model.Date{})
+		err := sqliteStorage.UpdateSubscription(id, spec.ServiceName, 300, spec.StartDate, model.Date{})
 		assert.NoError(t, err)
 
 		subscription, _ := sqliteStorage.GetSubscription(id)
-		assert.Equal(t, subscription.ID, id)
-		assert.Equal(t, subscription.ServiceName, spec.ServiceName)
-		assert.Equal(t, subscription.Price, 300)
-		assert.Equal(t, subscription.UserID, spec.UserID)
-		assert.Equal(t, subscription.StartDate, spec.StartDate)
-		assert.Equal(t, subscription.EndDate, spec.EndDate)
+		assert.Equal(t, id, subscription.ID)
+		assert.Equal(t, spec.ServiceName, subscription.ServiceName)
+		assert.Equal(t, 300, subscription.Price)
+		assert.Equal(t, spec.UserID, subscription.UserID)
+		assert.Equal(t, spec.StartDate, subscription.StartDate)
+		assert.Equal(t, spec.EndDate, subscription.EndDate)
 	})
 
 	// 4.Update existen FAIL
@@ -256,7 +256,7 @@ func TestUpdateSubscription(t *testing.T) {
 		}
 		id, _ := sqliteStorage.CreateSubscription(spec)
 
-		err := sqliteStorage.UpdateSubscription(id, 500, model.Date{Month: 12, Year: 2025})
+		err := sqliteStorage.UpdateSubscription(id, spec.ServiceName, 500, spec.StartDate, model.Date{Month: 12, Year: 2025})
 		assert.ErrorContains(t, err, "constraint")
 	})
 }
