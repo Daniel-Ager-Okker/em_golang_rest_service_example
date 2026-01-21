@@ -49,6 +49,8 @@ type FilteredDataReader interface {
 // @Produce json
 // @Param request body TotalCostRequest true "filters data"
 // @Success 200 {object} TotalCostResponse
+// @Failure 400 {object} TotalCostResponse
+// @Failure 500 {object} TotalCostResponse
 // @Router /subscriptions/total-cost [get]
 func NewTotalCostHandler(logger *slog.Logger, dataReader FilteredDataReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

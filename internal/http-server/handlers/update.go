@@ -40,8 +40,12 @@ type Updater interface {
 // @Description Update subscription
 // @Accept json
 // @Produce json
+// @Param id path int true "Subscription ID"
 // @Param request body UpdateRequest true "Subscription new data"
 // @Success 200 {object} Response
+// @Failure 400 {object} Response
+// @Failure 404 {object} Response
+// @Failure 500 {object} Response
 // @Router /subscription/{id} [patch]
 func NewUpdateHandler(logger *slog.Logger, updater Updater) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

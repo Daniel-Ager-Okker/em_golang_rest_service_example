@@ -21,7 +21,11 @@ type Deleter interface {
 // @Summary Delete subscription
 // @Description Delete subscription
 // @Produce json
+// @Param id path int true "Subscription ID"
 // @Success 200 {object} Response
+// @Failure 400 {object} Response
+// @Failure 404 {object} Response
+// @Failure 500 {object} Response
 // @Router /subscription/{id} [delete]
 func NewDeleteHandler(logger *slog.Logger, deleter Deleter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

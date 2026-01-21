@@ -136,6 +136,12 @@ definitions:
       price:
         description: New price (required)
         type: integer
+      service_name:
+        description: New service name (required)
+        type: string
+      start_date:
+        description: New start date
+        type: string
     type: object
 info:
   contact: {}
@@ -155,14 +161,32 @@ paths:
       produces:
       - application/json
       responses:
-        "200":
-          description: OK
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal_http-server_handlers.CreateResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_http-server_handlers.CreateResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/internal_http-server_handlers.CreateResponse'
+        "500":
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/internal_http-server_handlers.CreateResponse'
       summary: Create new subscription
   /subscription/{id}:
     delete:
       description: Delete subscription
+      parameters:
+      - description: Subscription ID
+        in: path
+        name: id
+        required: true
+        type: integer
       produces:
       - application/json
       responses:
@@ -170,14 +194,44 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/internal_http-server_handlers.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_http-server_handlers.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_http-server_handlers.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_http-server_handlers.Response'
       summary: Delete subscription
     get:
       description: Read subscription
+      parameters:
+      - description: Subscription ID
+        in: path
+        name: id
+        required: true
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
+          schema:
+            $ref: '#/definitions/internal_http-server_handlers.ReadResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_http-server_handlers.ReadResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_http-server_handlers.ReadResponse'
+        "500":
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/internal_http-server_handlers.ReadResponse'
       summary: Read subscription
@@ -186,6 +240,11 @@ paths:
       - application/json
       description: Update subscription
       parameters:
+      - description: Subscription ID
+        in: path
+        name: id
+        required: true
+        type: integer
       - description: Subscription new data
         in: body
         name: request
@@ -199,6 +258,18 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/internal_http-server_handlers.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_http-server_handlers.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_http-server_handlers.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_http-server_handlers.Response'
       summary: Update subscription
   /subscriptions:
     get:
@@ -210,6 +281,14 @@ paths:
       responses:
         "200":
           description: OK
+          schema:
+            $ref: '#/definitions/internal_http-server_handlers.ListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_http-server_handlers.ListResponse'
+        "500":
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/internal_http-server_handlers.ListResponse'
       summary: Get all subscriptions
@@ -230,6 +309,14 @@ paths:
       responses:
         "200":
           description: OK
+          schema:
+            $ref: '#/definitions/internal_http-server_handlers.TotalCostResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_http-server_handlers.TotalCostResponse'
+        "500":
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/internal_http-server_handlers.TotalCostResponse'
       summary: Calculate total cost with specified filters

@@ -54,6 +54,8 @@ type ListReader interface {
 // @Accept json
 // @Produce json
 // @Success 200 {object} ListResponse
+// @Failure 400 {object} ListResponse
+// @Failure 500 {object} ListResponse
 // @Router /subscriptions [get]
 func NewListHandler(logger *slog.Logger, listReader ListReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

@@ -54,6 +54,9 @@ type Creator interface {
 // @Produce json
 // @Param request body CreateRequest true "Subscription data"
 // @Success 201 {object} CreateResponse
+// @Failure 404 {object} CreateResponse
+// @Failure 409 {object} CreateResponse
+// @Failure 500 {object} CreateResponse
 // @Router /subscription [post]
 func NewCreateHandler(logger *slog.Logger, creator Creator) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

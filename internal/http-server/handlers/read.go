@@ -47,7 +47,11 @@ type Reader interface {
 // @Summary Read subscription
 // @Description Read subscription
 // @Produce json
+// @Param id path int true "Subscription ID"
 // @Success 200 {object} ReadResponse
+// @Failure 400 {object} ReadResponse
+// @Failure 404 {object} ReadResponse
+// @Failure 500 {object} ReadResponse
 // @Router /subscription/{id} [get]
 func NewReadHandler(logger *slog.Logger, reader Reader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
