@@ -21,6 +21,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/google/uuid"
 )
 
 func main() {
@@ -124,6 +125,7 @@ type Repo interface {
 	UpdateSubscription(id int64, newServiceName string, newPrice int, newStart, newEnd model.Date) error
 	DeleteSubscription(id int64) error
 	GetSubscriptions(limit, offset *int) ([]model.Subscription, error)
+	FilterSubscriptions(startDate, endDate model.Date, userId uuid.UUID, serviceName *string) ([]model.Subscription, error)
 }
 
 func setupRouter(l *slog.Logger, repo Repo) *chi.Mux {

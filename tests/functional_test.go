@@ -247,15 +247,12 @@ func TestTotalCost(t *testing.T) {
 	}
 
 	// 2.Get total cost
-	req := handlers.TotalCostRequest{
-		StartDate: "01-2027",
-		EndDate:   "12-2027",
-		UserID:    userId,
-	}
-
 	var resp handlers.TotalCostResponse
+
 	e.GET("/subscriptions/total-cost").
-		WithJSON(req).
+		WithQuery("start_date", "01-2025").
+		WithQuery("end_date", "01-2028").
+		WithQuery("user_id", userId).
 		Expect().
 		Status(http.StatusOK).
 		JSON().

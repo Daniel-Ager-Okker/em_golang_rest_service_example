@@ -388,3 +388,95 @@ func TestToStringISO(t *testing.T) {
 		assert.Equal(t, "2025-11-01", dateStr)
 	})
 }
+
+func TestMonthsBetween(t *testing.T) {
+	tests := []struct {
+		name     string
+		d1       Date
+		d2       Date
+		expected int
+	}{
+		{
+			name:     "same month and year",
+			d1:       Date{Month: 1, Year: 2024},
+			d2:       Date{Month: 1, Year: 2024},
+			expected: 0,
+		},
+		{
+			name:     "consecutive months same year",
+			d1:       Date{Month: 1, Year: 2024},
+			d2:       Date{Month: 2, Year: 2024},
+			expected: 1,
+		},
+		{
+			name:     "6 months apart same year",
+			d1:       Date{Month: 1, Year: 2024},
+			d2:       Date{Month: 7, Year: 2024},
+			expected: 6,
+		},
+		{
+			name:     "december to january next year",
+			d1:       Date{Month: 12, Year: 2024},
+			d2:       Date{Month: 1, Year: 2025},
+			expected: 1,
+		},
+		{
+			name:     "cross year multiple months",
+			d1:       Date{Month: 10, Year: 2024},
+			d2:       Date{Month: 3, Year: 2025},
+			expected: 5,
+		},
+		{
+			name:     "example from question",
+			d1:       Date{Month: 12, Year: 2025},
+			d2:       Date{Month: 8, Year: 2026},
+			expected: 8,
+		},
+		{
+			name:     "exactly 1 year difference same month",
+			d1:       Date{Month: 3, Year: 2023},
+			d2:       Date{Month: 3, Year: 2024},
+			expected: 12,
+		},
+		{
+			name:     "2 years difference",
+			d1:       Date{Month: 6, Year: 2020},
+			d2:       Date{Month: 6, Year: 2022},
+			expected: 24,
+		},
+		{
+			name:     "2 years 5 months difference",
+			d1:       Date{Month: 3, Year: 2021},
+			d2:       Date{Month: 8, Year: 2023},
+			expected: 29,
+		},
+		{
+			name:     "january to december previous year",
+			d1:       Date{Month: 1, Year: 2025},
+			d2:       Date{Month: 12, Year: 2024},
+			expected: 1,
+		},
+		{
+			name:     "large difference",
+			d1:       Date{Month: 1, Year: 2000},
+			d2:       Date{Month: 12, Year: 2025},
+			expected: 311,
+		},
+		{
+			name:     "commutative property - order shouldn't matter",
+			d1:       Date{Month: 8, Year: 2026},
+			d2:       Date{Month: 12, Year: 2025},
+			expected: 8,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := MonthsBetween(tt.d1, tt.d2)
+			if result != tt.expected {
+				t.Errorf("MonthsBetween(%+v, %+v) = %d, expected %d",
+					tt.d1, tt.d2, result, tt.expected)
+			}
+		})
+	}
+}

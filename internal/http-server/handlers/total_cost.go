@@ -4,7 +4,6 @@ import (
 	"em_golang_rest_service_example/internal/model"
 	"log/slog"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
@@ -38,6 +37,11 @@ type TotalCostResponse struct {
 	Response
 }
 
+//go:generate go run github.com/vektra/mockery/v2@v2.53.5 --name=FilteredDataReader
+type FilteredDataReader interface {
+	FilterSubscriptions(startDate, endDate model.Date, userId uuid.UUID, serviceName *string) ([]model.Subscription, error)
+}
+
 // NewTotalCostHandler godoc
 // @Summary Calculate total cost with specified filters
 // @Description Calculate total cost with specified filters
@@ -46,7 +50,7 @@ type TotalCostResponse struct {
 // @Param request body TotalCostRequest true "filters data"
 // @Success 200 {object} TotalCostResponse
 // @Router /subscriptions/total-cost [get]
-func NewTotalCostHandler(logger *slog.Logger, listReader ListReader) http.HandlerFunc {
+func NewTotalCostHandler(logger *slog.Logger, dataReader FilteredDataReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.total_cost"
 
@@ -57,20 +61,19 @@ func NewTotalCostHandler(logger *slog.Logger, listReader ListReader) http.Handle
 
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
-		// 1.Parse request
-		var req TotalCostRequest
-		if ok := parseReq(r, w, logger, &req); !ok {
+		// 1.Parse and validate URL data
+		start, end, uid, serviceName, ok := getValidatedReqData(r, w, logger)
+		if !ok {
 			return
 		}
 
-		// 2.Validate request data
-		validateOk := validateTotalCostReq(r, w, &req, logger)
-		if !validateOk {
-			return
+		// 3.Get filtered subscriptions
+		var sNamePtr *string
+		if serviceName != "" {
+			sNamePtr = &serviceName
 		}
 
-		// 3.Get all subscriptions
-		subscriptions, err := listReader.GetSubscriptions(nil, nil)
+		subscriptions, err := dataReader.FilterSubscriptions(start, end, uid, sNamePtr)
 		if err != nil {
 			logger.Error("failed to get subscription", "details", err)
 
@@ -80,8 +83,8 @@ func NewTotalCostHandler(logger *slog.Logger, listReader ListReader) http.Handle
 			return
 		}
 
-		// 4.Filter it
-		totalCost := calculateTotalCostFiltered(subscriptions, &req)
+		// 4.Calculate
+		totalCost := calculateTotalCostFiltered(subscriptions)
 
 		logger.Info("got filtered subscriptions total cost", "value", totalCost)
 
@@ -94,98 +97,75 @@ func NewTotalCostHandler(logger *slog.Logger, listReader ListReader) http.Handle
 	}
 }
 
-func validateTotalCostReq(r *http.Request, w http.ResponseWriter, req *TotalCostRequest, logger *slog.Logger) bool {
+func getValidatedReqData(r *http.Request, w http.ResponseWriter, logger *slog.Logger) (model.Date, model.Date, uuid.UUID, string, bool) {
 	// 1.Dates
-	if req.StartDate == "" {
+	startDateStr := r.URL.Query().Get("start_date")
+	if startDateStr == "" {
 		logger.Error("request start date is empty")
 		w.WriteHeader(http.StatusBadRequest)
 		render.JSON(w, r, TotalCostResponse{Response: RespError("empty start date")})
-		return false
+		return model.Date{}, model.Date{}, uuid.Nil, "", false
 	}
 
-	startDate, err := model.DateFromString(req.StartDate)
+	startDate, err := model.DateFromString(startDateStr)
 	if err != nil {
 		logger.Error("request start date is invalid", "details", err)
 		w.WriteHeader(http.StatusBadRequest)
 		render.JSON(w, r, TotalCostResponse{Response: RespError("request start date is invalid")})
-		return false
+		return model.Date{}, model.Date{}, uuid.Nil, "", false
 	}
 
-	if req.EndDate == "" {
+	endDateStr := r.URL.Query().Get("end_date")
+	if endDateStr == "" {
 		logger.Error("request end date is empty")
 		w.WriteHeader(http.StatusBadRequest)
 		render.JSON(w, r, TotalCostResponse{Response: RespError("empty end date")})
-		return false
+		return model.Date{}, model.Date{}, uuid.Nil, "", false
 	}
 
-	endDate, err := model.DateFromString(req.EndDate)
+	endDate, err := model.DateFromString(endDateStr)
 	if err != nil {
 		logger.Error("request end date is invalid", "details", err)
 		w.WriteHeader(http.StatusBadRequest)
 		render.JSON(w, r, TotalCostResponse{Response: RespError("request end date is invalid")})
-		return false
+		return model.Date{}, model.Date{}, uuid.Nil, "", false
 	}
 
 	if startDate.GreaterThan(endDate) {
 		logger.Error("request start date greater than end date")
 		w.WriteHeader(http.StatusBadRequest)
 		render.JSON(w, r, TotalCostResponse{Response: RespError("request start date greater than end date")})
-		return false
+		return model.Date{}, model.Date{}, uuid.Nil, "", false
 	}
 
 	// 2.User ID if have
-	if req.UserID != "" {
-		_, err := uuid.Parse(req.UserID)
+	userId := uuid.Nil
+
+	userIdStr := r.URL.Query().Get("user_id")
+	if userIdStr != "" {
+		userId, err = uuid.Parse(userIdStr)
 		if err != nil {
 			logger.Error("user id filter is invalid", "details", err)
 
 			w.WriteHeader(http.StatusBadRequest)
 			render.JSON(w, r, TotalCostResponse{Response: RespError("user id filter is invalid")})
 
-			return false
+			return model.Date{}, model.Date{}, uuid.Nil, "", false
 		}
 	}
 
-	return true
+	// 3.Service name if have
+	serviceName := r.URL.Query().Get("service_name")
+
+	return startDate, endDate, userId, serviceName, true
 }
 
-func calculateTotalCostFiltered(subs []model.Subscription, req *TotalCostRequest) int {
+func calculateTotalCostFiltered(subs []model.Subscription) int {
 	cost := 0
 
-	// 1.Get start/end bounds as dates
-	startBound, _ := model.DateFromString(req.StartDate)
-	endBound, _ := model.DateFromString(req.EndDate)
-
 	for i := 0; i < len(subs); i++ {
-		// 1.Range check
-		start := subs[i].StartDate
-		startOk := start.EqualTo(startBound) || start.GreaterThan(startBound)
-		if !startOk {
-			continue
-		}
-
-		end := subs[i].EndDate
-		endOk := end.EqualTo(endBound) || endBound.GreaterThan(end)
-		if !endOk {
-			continue
-		}
-
-		// 2.User id filtering if need
-		if req.UserID != "" {
-			uid, _ := uuid.Parse(req.UserID)
-			if subs[i].UserID != uid {
-				continue
-			}
-		}
-
-		// 3.Service name filtering if need
-		if req.ServiceName != "" {
-			if strings.Compare(req.ServiceName, subs[i].ServiceName) != 0 {
-				continue
-			}
-		}
-
-		cost += subs[i].Price
+		monthDiff := model.MonthsBetween(subs[i].StartDate, subs[i].EndDate)
+		cost += subs[i].Price * monthDiff
 	}
 
 	return cost

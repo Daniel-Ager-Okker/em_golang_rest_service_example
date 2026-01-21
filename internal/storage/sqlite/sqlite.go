@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/google/uuid"
 	"github.com/mattn/go-sqlite3"
 )
 
@@ -229,40 +230,78 @@ func (s *SqliteStorage) GetSubscriptions(limit, offset *int) ([]model.Subscripti
 		return []model.Subscription{}, errors.New("no limit value while offset is set")
 	}
 
-	// 2.Prepare query and exec needed
-	var rows *sql.Rows
+	// 2.Prepare query
+	query := "SELECT * FROM subscription"
+	args := []interface{}{}
 
-	if limit == nil {
-		query := "SELECT * FROM subscription"
-
-		stmt, err := s.db.Prepare(query)
-		if err != nil {
-			s.logger.Error(loggerMsg, "details", err)
-			return []model.Subscription{}, fmt.Errorf("%s: prepare statement: %w", op, err)
-		}
-
-		rows, err = stmt.Query()
-		if err != nil {
-			s.logger.Error(loggerMsg, "details", err)
-			return []model.Subscription{}, fmt.Errorf("%s: exec statement: %w", op, err)
-		}
-	} else {
-		query := "SELECT * FROM subscription LIMIT ? OFFSET ?"
-
-		stmt, err := s.db.Prepare(query)
-		if err != nil {
-			s.logger.Error(loggerMsg, "details", err)
-			return []model.Subscription{}, fmt.Errorf("%s: prepare statement: %w", op, err)
-		}
-
-		rows, err = stmt.Query(*limit, *offset)
-		if err != nil {
-			s.logger.Error(loggerMsg, "details", err)
-			return []model.Subscription{}, fmt.Errorf("%s: exec statement: %w", op, err)
-		}
+	if limit != nil {
+		query += " LIMIT ? OFFSET ?"
+		args = append(args, *limit, *offset)
 	}
 
-	// 3.Parse and get data
+	stmt, err := s.db.Prepare(query)
+	if err != nil {
+		s.logger.Error(loggerMsg, "details", err)
+		return []model.Subscription{}, fmt.Errorf("%s: prepare statement: %w", op, err)
+	}
+
+	// 3.Run it
+	rows, err := stmt.Query(args...)
+	if err != nil {
+		s.logger.Error(loggerMsg, "details", err)
+		return []model.Subscription{}, fmt.Errorf("%s: exec statement: %w", op, err)
+	}
+
+	// 4.Get data
+	subscriptions, err := s.getSubscriptionsFromSqliteRows(&loggerMsg, op, rows)
+	if err != nil {
+		return []model.Subscription{}, err
+	}
+
+	return subscriptions, nil
+}
+
+func (s *SqliteStorage) FilterSubscriptions(startDate, endDate model.Date, userId uuid.UUID, serviceName *string) ([]model.Subscription, error) {
+	const op = "storage.sqlite.FilterSubscriptions"
+	var loggerMsg string = fmt.Sprintf("operation is %s", op)
+
+	// 1.Prepare query
+	query := "SELECT * FROM subscription WHERE start_date > ? AND end_date < ?"
+	args := []interface{}{startDate.ToStringISO(), endDate.ToStringISO()}
+
+	if userId != uuid.Nil {
+		query += " AND user_id = ?"
+		args = append(args, userId.String())
+	}
+
+	if serviceName != nil {
+		query += " AND service_name = ?"
+		args = append(args, *serviceName)
+	}
+
+	stmt, err := s.db.Prepare(query)
+	if err != nil {
+		s.logger.Error(loggerMsg, "details", err)
+		return []model.Subscription{}, fmt.Errorf("%s: prepare statement: %w", op, err)
+	}
+
+	// 3.Run it
+	rows, err := stmt.Query(args...)
+	if err != nil {
+		s.logger.Error(loggerMsg, "details", err)
+		return []model.Subscription{}, fmt.Errorf("%s: exec statement: %w", op, err)
+	}
+
+	// 4.Get data
+	filtered, err := s.getSubscriptionsFromSqliteRows(&loggerMsg, op, rows)
+	if err != nil {
+		return []model.Subscription{}, err
+	}
+
+	return filtered, nil
+}
+
+func (s *SqliteStorage) getSubscriptionsFromSqliteRows(loggerMsg *string, op string, rows *sql.Rows) ([]model.Subscription, error) {
 	var subscriptions []model.Subscription
 
 	for rows.Next() {
@@ -280,22 +319,22 @@ func (s *SqliteStorage) GetSubscriptions(limit, offset *int) ([]model.Subscripti
 			&endDate,
 		)
 		if err != nil {
-			s.logger.Error(loggerMsg, "details", fmt.Errorf("error while parsing db data: %w", err))
+			s.logger.Error(*loggerMsg, "details", fmt.Errorf("error while parsing db data: %w", err))
 			return nil, fmt.Errorf("%s: scan row: %w", op, err)
 		}
 
-		// 3.1.Start date
+		// Start date handling
 		start, err := model.DateFromStringISO(startDate)
 		if err != nil {
-			s.logger.Error(loggerMsg, "details", fmt.Errorf("error while getting start date: %w", err))
+			s.logger.Error(*loggerMsg, "details", fmt.Errorf("error while getting start date: %w", err))
 			return []model.Subscription{}, fmt.Errorf("%s: getting start date: %w", op, err)
 		}
 		sub.StartDate = start
 
-		// 3.2.End date
+		// End date handling
 		end, err := model.DateFromStringISO(endDate)
 		if err != nil {
-			s.logger.Error(loggerMsg, "details", fmt.Errorf("error while getting end date: %w", err))
+			s.logger.Error(*loggerMsg, "details", fmt.Errorf("error while getting end date: %w", err))
 			return []model.Subscription{}, fmt.Errorf("%s: getting end date: %w", op, err)
 		}
 		sub.EndDate = end

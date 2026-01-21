@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -307,49 +308,76 @@ func (s *PostgresStorage) GetSubscriptions(limit, offset *int) ([]model.Subscrip
 		return []model.Subscription{}, errors.New("no limit value while offset is set")
 	}
 
-	// 2.Prepare query and exec needed
-	var rows pgx.Rows
-	var err error
+	// 2.Prepare and exec
+	query := "SELECT id, service_name, price, user_id, start_date::text, end_date::text FROM subscription"
+	args := []interface{}{}
 
-	if limit == nil {
-		query := `
-			SELECT
-				id,
-				service_name,
-				price,
-				user_id,
-				start_date::text,
-				end_date::text
-			FROM subscription
-		`
+	if limit != nil {
+		query += " LIMIT $1 OFFSET $2"
+		args = append(args, *limit, *offset)
+	}
 
-		rows, err = s.pool.Query(ctx, query)
-		if err != nil {
-			s.logger.Error(loggerMsg, "details", err)
-			return []model.Subscription{}, fmt.Errorf("%s: exec statement: %w", op, err)
-		}
-	} else {
-		query := `
-			SELECT
-				id,
-				service_name,
-				price,
-				user_id,
-				start_date::text,
-				end_date::text
-			FROM subscription
-			LIMIT $1
-			OFFSET $2
-		`
-
-		rows, err = s.pool.Query(ctx, query, *limit, *offset)
-		if err != nil {
-			s.logger.Error(loggerMsg, "details", err)
-			return []model.Subscription{}, fmt.Errorf("%s: exec statement: %w", op, err)
-		}
+	rows, err := s.pool.Query(ctx, query, args...)
+	if err != nil {
+		s.logger.Error(loggerMsg, "details", err)
+		return []model.Subscription{}, fmt.Errorf("%s: exec statement: %w", op, err)
 	}
 
 	// 3.Parse and get data
+	subscriptions, err := s.getSubscriptionsFromPgRows(&loggerMsg, op, rows)
+	if err != nil {
+		return []model.Subscription{}, err
+	}
+
+	return subscriptions, nil
+}
+
+func (s *PostgresStorage) FilterSubscriptions(startDate, endDate model.Date, userId uuid.UUID, serviceName *string) ([]model.Subscription, error) {
+	const op = "storage.postgres.FilterSubscriptions"
+	var loggerMsg string = fmt.Sprintf("operation is %s", op)
+
+	ctx := context.Background()
+
+	// 2.Prepare and exec
+	query := `
+		SELECT
+			id,
+			service_name,
+			price,
+			user_id,
+			start_date::text,
+			end_date::text
+		FROM subscription
+		WHERE start_date > $1 AND end_date < $2
+	`
+	args := []interface{}{startDate.ToStringISO(), endDate.ToStringISO()}
+
+	if userId != uuid.Nil {
+		args = append(args, userId.String())
+		query += fmt.Sprintf(" AND user_id = $%d", len(args))
+	}
+
+	if serviceName != nil {
+		args = append(args, *serviceName)
+		query += fmt.Sprintf(" AND user_id = $%d", len(args))
+	}
+
+	rows, err := s.pool.Query(ctx, query, args...)
+	if err != nil {
+		s.logger.Error(loggerMsg, "details", err)
+		return []model.Subscription{}, fmt.Errorf("%s: exec statement: %w", op, err)
+	}
+
+	// 3.Parse and get data
+	subscriptions, err := s.getSubscriptionsFromPgRows(&loggerMsg, op, rows)
+	if err != nil {
+		return []model.Subscription{}, err
+	}
+
+	return subscriptions, nil
+}
+
+func (s *PostgresStorage) getSubscriptionsFromPgRows(loggerMsg *string, op string, rows pgx.Rows) ([]model.Subscription, error) {
 	var subscriptions []model.Subscription
 
 	for rows.Next() {
@@ -358,7 +386,7 @@ func (s *PostgresStorage) GetSubscriptions(limit, offset *int) ([]model.Subscrip
 		var startDate string
 		var endDate string
 
-		err = rows.Scan(
+		err := rows.Scan(
 			&sub.ID,
 			&sub.ServiceName,
 			&sub.Price,
@@ -367,22 +395,22 @@ func (s *PostgresStorage) GetSubscriptions(limit, offset *int) ([]model.Subscrip
 			&endDate,
 		)
 		if err != nil {
-			s.logger.Error(loggerMsg, "details", fmt.Errorf("error while parsing db data: %w", err))
+			s.logger.Error(*loggerMsg, "details", fmt.Errorf("error while parsing db data: %w", err))
 			return nil, fmt.Errorf("%s: scan row: %w", op, err)
 		}
 
-		// 3.1.Start date
+		// Start date
 		start, err := model.DateFromStringISO(startDate)
 		if err != nil {
-			s.logger.Error(loggerMsg, "details", fmt.Errorf("error while getting start date: %w", err))
+			s.logger.Error(*loggerMsg, "details", fmt.Errorf("error while getting start date: %w", err))
 			return []model.Subscription{}, fmt.Errorf("%s: getting start date: %w", op, err)
 		}
 		sub.StartDate = start
 
-		// 3.2.End date
+		// End date
 		end, err := model.DateFromStringISO(endDate)
 		if err != nil {
-			s.logger.Error(loggerMsg, "details", fmt.Errorf("error while getting end date: %w", err))
+			s.logger.Error(*loggerMsg, "details", fmt.Errorf("error while getting end date: %w", err))
 			return []model.Subscription{}, fmt.Errorf("%s: getting end date: %w", op, err)
 		}
 		sub.EndDate = end

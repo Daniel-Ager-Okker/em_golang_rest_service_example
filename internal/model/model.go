@@ -120,3 +120,15 @@ func DateFromStringISO(str string) (Date, error) {
 
 	return Date{Month: month, Year: year}, nil
 }
+
+// Calculate month difference between two dates (means absolute value)
+func MonthsBetween(d1, d2 Date) int {
+	totalMonths1 := 12*d1.Year + d1.Month
+	totalMonths2 := 12*d2.Year + d2.Month
+
+	diff := totalMonths1 - totalMonths2
+	if diff >= 0 {
+		return diff
+	}
+	return -diff
+}

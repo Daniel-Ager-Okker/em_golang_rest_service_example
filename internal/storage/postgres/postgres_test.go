@@ -460,6 +460,113 @@ func TestGetSubscriptions(t *testing.T) {
 
 }
 
+func TestFilterSubscriptions(t *testing.T) {
+	// 1.Init
+	pool := newTestDB(t)
+
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
+	pgStorage := newStorage(logger, pool)
+
+	// 2.Set some data
+	user1 := uuid.New()
+	user2 := uuid.New()
+
+	services := []string{
+		"Yandex", "Google", "Netflix", "Wink", "VK Music", "Amediateka",
+	}
+	prices := []int{
+		400, 800, 700, 300, 150, 600,
+	}
+	users := []uuid.UUID{
+		user1, user2, user1, user2, user1, user2,
+	}
+	startDates := []model.Date{
+		{Month: 1, Year: 2026}, {Month: 3, Year: 2026}, {Month: 5, Year: 2026},
+		{Month: 7, Year: 2026}, {Month: 9, Year: 2026}, {Month: 11, Year: 2026},
+	}
+	endDates := []model.Date{
+		{Month: 2, Year: 2026}, {Month: 4, Year: 2026}, {Month: 6, Year: 2026},
+		{Month: 8, Year: 2026}, {Month: 10, Year: 2026}, {Month: 12, Year: 2026},
+	}
+
+	allSubscriptions := make([]model.Subscription, 0, len(services))
+	for i := 0; i < len(services); i++ {
+		spec := model.SubscriptionSpec{
+			ServiceName: services[i],
+			Price:       prices[i],
+			UserID:      users[i],
+			StartDate:   startDates[i],
+			EndDate:     endDates[i],
+		}
+		id, err := pgStorage.CreateSubscription(spec)
+		assert.Nil(t, err)
+
+		allSubscriptions = append(allSubscriptions, model.Subscription{ID: id, SubscriptionSpec: spec})
+	}
+
+	// 3.Tests
+	cases := []struct {
+		name   string
+		start  model.Date
+		end    model.Date
+		uid    uuid.UUID
+		sName  string
+		answer []model.Subscription
+	}{
+		{
+			name:   "All subscriptions",
+			start:  model.Date{Month: 12, Year: 2025},
+			end:    model.Date{Month: 1, Year: 2027},
+			answer: allSubscriptions,
+		},
+		{
+			name:   "Not all subscriptions",
+			start:  model.Date{Month: 2, Year: 2026},
+			end:    model.Date{Month: 7, Year: 2026},
+			answer: []model.Subscription{allSubscriptions[1], allSubscriptions[2]},
+		},
+		{
+			name:   "Not all subscriptions and user_id",
+			start:  model.Date{Month: 2, Year: 2026},
+			end:    model.Date{Month: 7, Year: 2026},
+			uid:    user1,
+			answer: []model.Subscription{allSubscriptions[2]},
+		},
+		{
+			name:   "Not all subscriptions and service_name",
+			start:  model.Date{Month: 2, Year: 2026},
+			end:    model.Date{Month: 7, Year: 2026},
+			sName:  "Google",
+			answer: []model.Subscription{allSubscriptions[1]},
+		},
+		{
+			name:   "Not all subscriptions and user_id with service_name",
+			start:  model.Date{Month: 2, Year: 2026},
+			end:    model.Date{Month: 7, Year: 2026},
+			uid:    user1,
+			sName:  "Google",
+			answer: []model.Subscription{},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var subs []model.Subscription
+			var err error
+
+			if tc.sName == "" {
+				subs, err = pgStorage.FilterSubscriptions(tc.start, tc.end, tc.uid, nil)
+			} else {
+				subs, err = pgStorage.FilterSubscriptions(tc.start, tc.end, tc.uid, &tc.sName)
+			}
+
+			assert.NoError(t, err)
+			assert.ObjectsAreEqual(tc.answer, subs)
+		})
+	}
+}
+
 func intPointerHelper(value int) *int {
 	p := new(int)
 	*p = value

@@ -1,4 +1,4 @@
-env: "dev"                      # dev or prod
+env: "dev"                        # dev or prod
 storage:
   storage_path: "./db/storage.db" # only for dev env
 http_server:
